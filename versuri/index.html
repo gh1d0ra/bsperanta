@@ -17,6 +17,7 @@
   .chordsEditRow { margin-bottom: 12px; }
   .chordsEditRow input { width: 100%; min-height: 40px; margin-bottom: 4px; font-family: 'Courier New', Courier, monospace; }
   .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
+  #chordsEditor hr { border: none; border-top: 3px dashed #999; margin: 16px 0; }
   .modal-dialog { margin: 1rem auto; }
 
   .selectedPanel {
@@ -397,7 +398,11 @@ function openEditChordsModal() {
   currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
   let stanza = 0, lineNum = 1;
   lines.forEach((line) => {
-    if (line.trim() === "") { stanza++; lineNum = 1; return; }
+    if (line.trim() === "") {
+      stanza++; lineNum = 1;
+      editor.appendChild(document.createElement("hr"));
+      return;
+    }
     const row = document.createElement("div");
     row.className = "chordsEditRow";
     row.dataset.stanza = stanza;

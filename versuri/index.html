@@ -15,7 +15,9 @@
   .btn-toolbar .btn, #newSongBtn { min-height: 44px; padding: 10px 16px; font-size: 16px; margin: 4px; touch-action: manipulation; }
   input, textarea, select { font-size: 16px; min-height: 40px; }
   .chordsEditRow { margin-bottom: 12px; }
-  .chordsEditRow input { width: 100%; min-height: 40px; margin-bottom: 4px; font-family: 'Courier New', Courier, monospace; }
+  .chordsInputRow { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+  .chordsInputRow .chordsInput { flex: 1; min-height: 40px; font-family: 'Courier New', Courier, monospace; }
+  .chordsInputRow button { min-width: 44px; min-height: 40px; font-size: 18px; border: 1px solid #ccc; background: #fff; border-radius: 6px; touch-action: manipulation; }
   .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
   #chordsEditor hr { border: none; border-top: 3px dashed #999; margin: 16px 0; }
   .modal-dialog { margin: 1rem auto; }
@@ -414,6 +416,18 @@ function openEditSongModal() {
   jQuery("#editSongModal").modal("show");
 }
 
+let chordsClipboard = "";
+
+function copyChords(btn) {
+  const input = btn.closest(".chordsInputRow").querySelector(".chordsInput");
+  chordsClipboard = input.value;
+}
+
+function pasteChords(btn) {
+  const input = btn.closest(".chordsInputRow").querySelector(".chordsInput");
+  input.value = chordsClipboard;
+}
+
 function openEditChordsModal() {
   if (!currentSong) return;
   const editor = $("chordsEditor");
@@ -433,7 +447,13 @@ function openEditChordsModal() {
     row.dataset.stanza = stanza;
     row.dataset.line = lineNum;
     const chordsVal = (chordMap[`${stanza}-${lineNum}`] || "").replace(/"/g, "&quot;");
-    row.innerHTML = `<input class="form-control chordsInput" value="${chordsVal}"><div class="lyricLine">${line}</div>`;
+    row.innerHTML = `
+      <div class="chordsInputRow">
+        <input class="form-control chordsInput" value="${chordsVal}">
+        <button type="button" class="chordsCopyBtn" title="Copy" onclick="copyChords(this)">📋</button>
+        <button type="button" class="chordsPasteBtn" title="Paste" onclick="pasteChords(this)">📥</button>
+      </div>
+      <div class="lyricLine">${line}</div>`;
     editor.appendChild(row);
     lineNum++;
   });

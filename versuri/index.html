@@ -30,11 +30,12 @@
 <div class="container-fluid">
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <a class="navbar-brand" href="/">Speranta</a>
+    <button class="btn btn-outline-primary" data-toggle="modal" data-target="#songsModal">☰ Songs</button>
     <div id="authArea"></div>
   </nav>
 
   <div class="row" style="margin-top: 10px;">
-    <div class="col-sm-8">
+    <div class="col-12">
       <div class="btn-toolbar" style="margin-bottom: 10px;">
         <button class="btn btn-sm btn-outline-secondary" onclick="transpose(-1)">Down ♭</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
@@ -48,15 +49,25 @@
       <h4 id="songTitle"></h4>
       <div id="songView"></div>
     </div>
-    <div class="col-sm-4">
+  </div>
+</div>
+
+<!-- Songs Menu Modal -->
+<div class="modal" id="songsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5>Songs</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
       <button class="btn btn-sm btn-success" id="newSongBtn" style="display:none" onclick="openNewSongModal()">+ New Song</button>
       <h5>Selected</h5>
       <ul id="selectedList" class="list-unstyled"></ul>
       <h5>All Songs</h5>
       <input class="form-control" id="searchBox" placeholder="Search..." oninput="renderSongList()">
-      <table class="table" id="songList"><tbody></tbody></table>
+      <table class="table" id="songList">
+        <thead><tr><th>Name</th><th>Last Sang</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- Login Modal -->
@@ -186,9 +197,10 @@ function renderSongList() {
   allSongs
     .filter((s) => s.songName.toLowerCase().includes(q))
     .forEach((s) => {
+      const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${s.songName}</td><td>${s.sangCount || 0}</td>`;
-      tr.onclick = () => loadSong(s.songId);
+      tr.innerHTML = `<td>${s.songName}</td><td>${lastSang}</td>`;
+      tr.onclick = () => { loadSong(s.songId); closeSongsModal(); };
       tbody.appendChild(tr);
     });
 }
@@ -199,9 +211,16 @@ async function loadSelected() {
   ul.innerHTML = "";
   selected.forEach((s) => {
     const li = document.createElement("li");
-    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});closeSongsModal();return false;">${s.songName}</a>`;
     ul.appendChild(li);
   });
+}
+
+function closeSongsModal() {
+  $("songsModal").classList.remove("show");
+  $("songsModal").style.display = "none";
+  document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+  document.body.classList.remove("modal-open");
 }
 
 async function loadSong(songId) {

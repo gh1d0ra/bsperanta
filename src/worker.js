@@ -136,19 +136,21 @@ async function handleApi(request, env, url) {
   }
 
   if (pathname === "/api/songs" && method === "GET") {
-    const placeholders = ACTIVE_SONG_TYPE_EXCLUDE.map(() => "?").join(",");
-    const { results } = await env.DB.prepare(
+    const showAll = url.searchParams.get("all") === "1";
+    const typeFilter = showAll
+      ? ""
+      : `AND s.songType NOT IN (${ACTIVE_SONG_TYPE_EXCLUDE.map(() => "?").join(",")})`;
+    const stmt = env.DB.prepare(
       `SELECT s.songId, s.songName, s.songType, m.sangCount, m.lastSang
        FROM SONGS s
        LEFT JOIN (
          SELECT songId, COUNT(*) as sangCount, MAX(sangDateTime) as lastSang
          FROM SONGS_METRICS GROUP BY songId
        ) m ON s.songId = m.songId
-       WHERE s.songIsActive = 1 AND s.songType NOT IN (${placeholders})
+       WHERE s.songIsActive = 1 ${typeFilter}
        ORDER BY s.songName`
-    )
-      .bind(...ACTIVE_SONG_TYPE_EXCLUDE)
-      .all();
+    );
+    const { results } = showAll ? await stmt.all() : await stmt.bind(...ACTIVE_SONG_TYPE_EXCLUDE).all();
     return json(results);
   }
 

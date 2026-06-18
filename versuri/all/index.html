@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<title>Toate Cântările - Versuri</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+<style>
+  body { font-size: 18px; }
+  .container { padding-top: 20px; }
+  #songList tr { cursor: pointer; }
+  #songList td, #songList th { padding: 10px 8px; }
+  #filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  #filters input, #filters select { font-size: 16px; min-height: 44px; }
+  #searchBox { flex: 2; min-width: 200px; }
+  #typeFilter { flex: 1; min-width: 160px; }
+  th.sortableCol { cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/versuri/" class="btn btn-outline-secondary" style="margin-bottom:16px;">← Back to Versuri</a>
+  <h3>Toate Cântările</h3>
+  <div id="filters">
+    <input class="form-control" id="searchBox" placeholder="Search by name..." oninput="renderSongList()">
+    <select class="form-control" id="typeFilter" onchange="renderSongList()">
+      <option value="">All Types</option>
+    </select>
+  </div>
+  <table class="table" id="songList">
+    <thead><tr>
+      <th class="sortableCol" data-key="songName">Name</th>
+      <th class="sortableCol" data-key="songType">Type</th>
+      <th class="sortableCol" data-key="sangCount">Sang Count</th>
+      <th class="sortableCol" data-key="lastSang">Last Sang</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script>
+let allSongs = [];
+let sortState = { key: "songName", dir: 1 };
+
+async function loadSongs() {
+  const res = await fetch("/api/songs?all=1");
+  allSongs = await res.json();
+  populateTypeFilter();
+  renderSongList();
+}
+
+function populateTypeFilter() {
+  const types = [...new Set(allSongs.map((s) => s.songType).filter(Boolean))].sort();
+  const select = document.getElementById("typeFilter");
+  types.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+}
+
+function sortSongs(list) {
+  const { key, dir } = sortState;
+  return [...list].sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (key === "sangCount") { av = av || 0; bv = bv || 0; }
+    if (key === "lastSang") { av = av || ""; bv = bv || ""; }
+    if (typeof av === "string") av = av.toLowerCase();
+    if (typeof bv === "string") bv = bv.toLowerCase();
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+function setSort(key) {
+  if (sortState.key === key) sortState.dir *= -1;
+  else sortState = { key, dir: 1 };
+  renderSongList();
+}
+
+document.querySelectorAll("#songList th.sortableCol").forEach((th) => {
+  th.onclick = () => setSort(th.dataset.key);
+});
+
+function renderSongList() {
+  const q = document.getElementById("searchBox").value.toLowerCase();
+  const typeVal = document.getElementById("typeFilter").value;
+  const tbody = document.querySelector("#songList tbody");
+  tbody.innerHTML = "";
+  const filtered = allSongs.filter((s) => {
+    const matchesName = s.songName.toLowerCase().includes(q);
+    const matchesType = !typeVal || s.songType === typeVal;
+    return matchesName && matchesType;
+  });
+  sortSongs(filtered).forEach((s) => {
+    const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${s.songName}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
+    tr.onclick = () => { window.location.href = `/versuri/?song=${s.songId}`; };
+    tbody.appendChild(tr);
+  });
+}
+
+loadSongs();
+</script>
+</body>
+</html>

@@ -14,8 +14,9 @@
   #songList td { padding: 10px 8px; }
   .btn-toolbar .btn, #newSongBtn { min-height: 44px; padding: 10px 16px; font-size: 16px; margin: 4px; touch-action: manipulation; }
   input, textarea, select { font-size: 16px; min-height: 40px; }
-  .chordsEditRow { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .chordsEditRow input { width: 160px; min-height: 40px; }
+  .chordsEditRow { margin-bottom: 12px; }
+  .chordsEditRow input { width: 100%; min-height: 40px; margin-bottom: 4px; font-family: 'Courier New', Courier, monospace; }
+  .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
   .modal-dialog { margin: 1rem auto; }
   #selectedList li { padding: 8px 0; }
   #selectedList a { display: block; padding: 6px 0; }
@@ -39,7 +40,8 @@
         <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(-1)">A-</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(1)">A+</button>
-        <button class="btn btn-sm btn-outline-primary" id="editBtn" style="display:none" onclick="openEditModal()">Edit</button>
+        <button class="btn btn-sm btn-outline-primary" id="editSongBtn" style="display:none" onclick="openEditSongModal()">Edit Song</button>
+        <button class="btn btn-sm btn-outline-primary" id="editChordsBtn" style="display:none" onclick="openEditChordsModal()">Edit Chords</button>
         <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
         <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
       </div>
@@ -91,19 +93,25 @@
   </div></div>
 </div>
 
-<!-- Edit Modal -->
-<div class="modal" id="editModal" tabindex="-1">
+<!-- Edit Song (lyrics) Modal -->
+<div class="modal" id="editSongModal" tabindex="-1">
   <div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h5>Editează Cântarea</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5>Editează Versurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
-      <h6>Conținut</h6>
-      <textarea class="form-control" id="editContent" rows="10"></textarea>
-      <button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="saveContent()">Save Content</button>
-      <hr>
-      <h6>Acorduri (per linie)</h6>
-      <div id="chordsEditor"></div>
-      <button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="saveChords()">Save Chords</button>
+      <textarea class="form-control" id="editContent" rows="14"></textarea>
     </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="saveContent()">Save</button></div>
+  </div></div>
+</div>
+
+<!-- Edit Chords Modal -->
+<div class="modal" id="editChordsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5>Editează Acordurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
+      <div id="chordsEditor"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="saveChords()">Save Chords</button></div>
   </div></div>
 </div>
 
@@ -135,7 +143,8 @@ function renderAuthArea() {
     el.innerHTML = `<button class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#loginModal">Login</button>`;
   }
   const showAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
-  $("editBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("editSongBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("editChordsBtn").style.display = showAdmin ? "inline-block" : "none";
   $("sangBtn").style.display = showAdmin ? "inline-block" : "none";
   $("selectBtn").style.display = showAdmin ? "inline-block" : "none";
   $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
@@ -213,7 +222,8 @@ async function loadSong(songId) {
     }
     const chords = chordMap[`${stanza}-${lineNum}`];
     if (chords && chords.replace(/[\[\]]/g, "").trim() !== "") {
-      out.push(`<div class="chordLine">${chords}</div>`);
+      const display = chords.replace(/\[\]/g, "  ");
+      out.push(`<div class="chordLine">${display}</div>`);
     }
     out.push(`<div>${line}</div>`);
     lineNum++;
@@ -278,9 +288,15 @@ async function saveNewSong() {
   loadSongs();
 }
 
-function openEditModal() {
+function openEditSongModal() {
   if (!currentSong) return;
   $("editContent").value = currentSong.songContent;
+  $("editSongModal").style.display = "block";
+  $("editSongModal").classList.add("show");
+}
+
+function openEditChordsModal() {
+  if (!currentSong) return;
   const editor = $("chordsEditor");
   editor.innerHTML = "";
   const lines = currentSong.songContent.split("\n");
@@ -293,16 +309,19 @@ function openEditModal() {
     row.className = "chordsEditRow";
     row.dataset.stanza = stanza;
     row.dataset.line = lineNum;
-    row.innerHTML = `<input class="form-control form-control-sm chordsInput" value="${(chordMap[`${stanza}-${lineNum}`] || "").replace(/"/g,'&quot;')}"><span>${line}</span>`;
+    const chordsVal = (chordMap[`${stanza}-${lineNum}`] || "").replace(/"/g, "&quot;");
+    row.innerHTML = `<input class="form-control chordsInput" value="${chordsVal}"><div class="lyricLine">${line}</div>`;
     editor.appendChild(row);
     lineNum++;
   });
-  $("editModal").style.display = "block";
-  $("editModal").classList.add("show");
+  $("editChordsModal").style.display = "block";
+  $("editChordsModal").classList.add("show");
 }
 
 async function saveContent() {
   await api(`/api/songs/${currentSong.songId}`, { method: "PUT", body: JSON.stringify({ content: $("editContent").value }) });
+  $("editSongModal").style.display = "none";
+  $("editSongModal").classList.remove("show");
   loadSong(currentSong.songId);
 }
 
@@ -312,8 +331,8 @@ async function saveChords() {
     entries.push({ stanza: parseInt(row.dataset.stanza), line: parseInt(row.dataset.line), chords: row.querySelector(".chordsInput").value });
   });
   await api(`/api/songs/${currentSong.songId}/chords`, { method: "POST", body: JSON.stringify({ entries }) });
-  $("editModal").style.display = "none";
-  $("editModal").classList.remove("show");
+  $("editChordsModal").style.display = "none";
+  $("editChordsModal").classList.remove("show");
   loadSong(currentSong.songId);
 }
 

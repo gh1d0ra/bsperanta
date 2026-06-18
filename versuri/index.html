@@ -54,7 +54,7 @@
 
 <!-- Songs Menu Modal -->
 <div class="modal" id="songsModal" tabindex="-1">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Songs</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <button class="btn btn-sm btn-success" id="newSongBtn" style="display:none" onclick="openNewSongModal()">+ New Song</button>
@@ -63,7 +63,7 @@
       <h5>All Songs</h5>
       <input class="form-control" id="searchBox" placeholder="Search..." oninput="renderSongList()">
       <table class="table" id="songList">
-        <thead><tr><th>Name</th><th>Last Sang</th></tr></thead>
+        <thead><tr><th>Name</th><th>Sang Count</th><th>Last Sang</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -72,7 +72,7 @@
 
 <!-- Login Modal -->
 <div class="modal" id="loginModal" tabindex="-1">
-  <div class="modal-dialog"><div class="modal-content">
+  <div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Autentificare</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <input class="form-control" id="loginUser" placeholder="Utilizator" style="margin-bottom:8px;">
@@ -85,7 +85,7 @@
 
 <!-- New Song Modal -->
 <div class="modal" id="newSongModal" tabindex="-1">
-  <div class="modal-dialog"><div class="modal-content">
+  <div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Cântarea Nouă</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <input class="form-control" id="newSongTitle" placeholder="Titlul" style="margin-bottom:8px;">
@@ -106,7 +106,7 @@
 
 <!-- Edit Song (lyrics) Modal -->
 <div class="modal" id="editSongModal" tabindex="-1">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Editează Versurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <textarea class="form-control" id="editContent" rows="14"></textarea>
@@ -117,7 +117,7 @@
 
 <!-- Edit Chords Modal -->
 <div class="modal" id="editChordsModal" tabindex="-1">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Editează Acordurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <div id="chordsEditor"></div>
@@ -170,9 +170,7 @@ async function doLogin() {
   try {
     me = await api("/api/login", { method: "POST", body: JSON.stringify({ username: $("loginUser").value, password: $("loginPass").value }) });
     $("loginError").textContent = "";
-    $("loginModal").classList.remove("show");
-    document.querySelector(".modal-backdrop")?.remove();
-    $("loginModal").style.display = "none";
+    jQuery("#loginModal").modal("hide");
     renderAuthArea();
   } catch (e) {
     $("loginError").textContent = e.message;
@@ -199,8 +197,8 @@ function renderSongList() {
     .forEach((s) => {
       const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${s.songName}</td><td>${lastSang}</td>`;
-      tr.onclick = () => { loadSong(s.songId); closeSongsModal(); };
+      tr.innerHTML = `<td>${s.songName}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
+      tr.onclick = () => { loadSong(s.songId); jQuery("#songsModal").modal("hide"); };
       tbody.appendChild(tr);
     });
 }
@@ -211,16 +209,9 @@ async function loadSelected() {
   ul.innerHTML = "";
   selected.forEach((s) => {
     const li = document.createElement("li");
-    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});closeSongsModal();return false;">${s.songName}</a>`;
+    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});jQuery('#songsModal').modal('hide');return false;">${s.songName}</a>`;
     ul.appendChild(li);
   });
-}
-
-function closeSongsModal() {
-  $("songsModal").classList.remove("show");
-  $("songsModal").style.display = "none";
-  document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-  document.body.classList.remove("modal-open");
 }
 
 async function loadSong(songId) {
@@ -293,8 +284,7 @@ async function addSelected() {
 }
 
 function openNewSongModal() {
-  $("newSongModal").style.display = "block";
-  $("newSongModal").classList.add("show");
+  jQuery("#newSongModal").modal("show");
 }
 
 async function saveNewSong() {
@@ -302,16 +292,14 @@ async function saveNewSong() {
     method: "POST",
     body: JSON.stringify({ name: $("newSongTitle").value, content: $("newSongContent").value, type: $("newSongType").value }),
   });
-  $("newSongModal").style.display = "none";
-  $("newSongModal").classList.remove("show");
+  jQuery("#newSongModal").modal("hide");
   loadSongs();
 }
 
 function openEditSongModal() {
   if (!currentSong) return;
   $("editContent").value = currentSong.songContent;
-  $("editSongModal").style.display = "block";
-  $("editSongModal").classList.add("show");
+  jQuery("#editSongModal").modal("show");
 }
 
 function openEditChordsModal() {
@@ -333,14 +321,12 @@ function openEditChordsModal() {
     editor.appendChild(row);
     lineNum++;
   });
-  $("editChordsModal").style.display = "block";
-  $("editChordsModal").classList.add("show");
+  jQuery("#editChordsModal").modal("show");
 }
 
 async function saveContent() {
   await api(`/api/songs/${currentSong.songId}`, { method: "PUT", body: JSON.stringify({ content: $("editContent").value }) });
-  $("editSongModal").style.display = "none";
-  $("editSongModal").classList.remove("show");
+  jQuery("#editSongModal").modal("hide");
   loadSong(currentSong.songId);
 }
 
@@ -350,8 +336,7 @@ async function saveChords() {
     entries.push({ stanza: parseInt(row.dataset.stanza), line: parseInt(row.dataset.line), chords: row.querySelector(".chordsInput").value });
   });
   await api(`/api/songs/${currentSong.songId}/chords`, { method: "POST", body: JSON.stringify({ entries }) });
-  $("editChordsModal").style.display = "none";
-  $("editChordsModal").classList.remove("show");
+  jQuery("#editChordsModal").modal("hide");
   loadSong(currentSong.songId);
 }
 

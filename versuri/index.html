@@ -18,11 +18,49 @@
   .chordsEditRow input { width: 100%; min-height: 40px; margin-bottom: 4px; font-family: 'Courier New', Courier, monospace; }
   .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
   .modal-dialog { margin: 1rem auto; }
-  #selectedList li { padding: 8px 0; }
-  #selectedList a { display: block; padding: 6px 0; }
+
+  .selectedPanel {
+    background: #eef6ff;
+    border: 1px solid #d6e9ff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+  }
+  .selectedPanel h6 {
+    margin: 0 0 8px 0;
+    color: #555;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+  }
+  #selectedList { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  #selectedList li { list-style: none; }
+  #selectedList a {
+    display: inline-block;
+    padding: 6px 14px;
+    background: #fff;
+    border: 1px solid #b9d8ff;
+    border-radius: 20px;
+    color: #0d6efd;
+    text-decoration: none;
+    font-size: 15px;
+  }
+  #selectedList a:hover { background: #0d6efd; color: #fff; }
+
+  .songCard {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  #songTitle { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; }
+
   @media (max-width: 768px) {
     .container-fluid { padding-left: 8px; padding-right: 8px; }
     #songView { font-size: 18px; }
+    .songCard { padding: 14px 16px; }
   }
 </style>
 </head>
@@ -41,12 +79,16 @@
     <div id="authArea"></div>
   </nav>
 
-  <div class="row" style="margin-top: 10px;">
+  <div class="row">
     <div class="col-12">
-      <h5>Selected</h5>
-      <ul id="selectedList" class="list-unstyled"></ul>
-      <h4 id="songTitle"></h4>
-      <div id="songView"></div>
+      <div class="selectedPanel">
+        <h6>Selected</h6>
+        <ul id="selectedList"></ul>
+      </div>
+      <div class="songCard">
+        <h4 id="songTitle"></h4>
+        <div id="songView"></div>
+      </div>
     </div>
   </div>
 </div>

@@ -226,6 +226,7 @@ function renderAuthArea() {
   $("sangBtn").style.display = showAdmin ? "inline-block" : "none";
   $("selectBtn").style.display = showAdmin ? "inline-block" : "none";
   $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
+  if (typeof selectedSongs !== "undefined") renderSelected();
 }
 
 async function refreshMe() {

@@ -47,6 +47,12 @@
     font-size: 15px;
   }
   #selectedList a:hover { background: #0d6efd; color: #fff; }
+  #selectedList li { display: flex; align-items: center; gap: 2px; }
+  #selectedList .moveBtn {
+    border: 1px solid #b9d8ff; background: #fff; color: #0d6efd; border-radius: 6px;
+    min-width: 36px; min-height: 36px; font-size: 16px; touch-action: manipulation;
+  }
+  #selectedList .moveBtn:disabled { opacity: 0.3; }
 
   .songCard {
     background: #fff;
@@ -283,15 +289,34 @@ function renderSongList() {
   });
 }
 
+let selectedSongs = [];
+
 async function loadSelected() {
-  const selected = await api("/api/selected");
+  selectedSongs = await api("/api/selected");
+  renderSelected();
+}
+
+function renderSelected() {
   const ul = $("selectedList");
   ul.innerHTML = "";
-  selected.forEach((s) => {
+  const isAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
+  selectedSongs.forEach((s, i) => {
     const li = document.createElement("li");
-    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    const moveButtons = isAdmin
+      ? `<button class="moveBtn" ${i === 0 ? "disabled" : ""} onclick="event.stopPropagation();moveSelected(${i},-1)">◀</button>
+         <button class="moveBtn" ${i === selectedSongs.length - 1 ? "disabled" : ""} onclick="event.stopPropagation();moveSelected(${i},1)">▶</button>`
+      : "";
+    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>${moveButtons}`;
     ul.appendChild(li);
   });
+}
+
+async function moveSelected(index, delta) {
+  const newIndex = index + delta;
+  if (newIndex < 0 || newIndex >= selectedSongs.length) return;
+  [selectedSongs[index], selectedSongs[newIndex]] = [selectedSongs[newIndex], selectedSongs[index]];
+  renderSelected();
+  await api("/api/selected/reorder", { method: "PUT", body: JSON.stringify({ songIds: selectedSongs.map((s) => s.songId) }) });
 }
 
 async function loadSong(songId) {

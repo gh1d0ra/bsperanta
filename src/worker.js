@@ -239,6 +239,18 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
+  if (pathname === "/api/selected/reorder" && method === "PUT") {
+    const admin = await requireAdmin(request, env);
+    if (!admin) return json({ error: "Unauthorized" }, 401);
+    const { songIds } = await request.json();
+    for (let i = 0; i < songIds.length; i++) {
+      await env.DB.prepare("UPDATE SONGS_SELECTED SET songOrder = ? WHERE songId = ?")
+        .bind(i + 1, songIds[i])
+        .run();
+    }
+    return json({ ok: true });
+  }
+
   const unselectMatch = pathname.match(/^\/api\/selected\/(\d+)$/);
   if (unselectMatch && method === "DELETE") {
     const admin = await requireAdmin(request, env);

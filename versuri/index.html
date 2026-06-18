@@ -563,7 +563,6 @@ async function saveChords() {
   const params = new URLSearchParams(location.search);
   const songParam = params.get("song");
   if (songParam) loadSong(parseInt(songParam, 10));
-  else if (allSongs.length) loadSong(allSongs[0].songId);
 })();
 </script>
 </body>

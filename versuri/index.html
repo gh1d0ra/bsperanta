@@ -28,23 +28,21 @@
 </head>
 <body>
 <div class="container-fluid">
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top flex-wrap" id="topBar">
     <button class="btn btn-outline-primary" data-toggle="modal" data-target="#songsModal">☰ Songs</button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="transpose(-1)">Down ♭</button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(-1)">A-</button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(1)">A+</button>
+    <button class="btn btn-sm btn-outline-primary" id="editSongBtn" style="display:none" onclick="openEditSongModal()">Edit Song</button>
+    <button class="btn btn-sm btn-outline-primary" id="editChordsBtn" style="display:none" onclick="openEditChordsModal()">Edit Chords</button>
+    <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
+    <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
     <div id="authArea"></div>
   </nav>
 
   <div class="row" style="margin-top: 10px;">
     <div class="col-12">
-      <div class="btn-toolbar" style="margin-bottom: 10px;">
-        <button class="btn btn-sm btn-outline-secondary" onclick="transpose(-1)">Down ♭</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(-1)">A-</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(1)">A+</button>
-        <button class="btn btn-sm btn-outline-primary" id="editSongBtn" style="display:none" onclick="openEditSongModal()">Edit Song</button>
-        <button class="btn btn-sm btn-outline-primary" id="editChordsBtn" style="display:none" onclick="openEditChordsModal()">Edit Chords</button>
-        <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
-        <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
-      </div>
       <h5>Selected</h5>
       <ul id="selectedList" class="list-unstyled"></ul>
       <h4 id="songTitle"></h4>

@@ -50,11 +50,11 @@
   }
   #selectedList a:hover { background: #0d6efd; color: #fff; }
   #selectedList li { display: flex; align-items: center; gap: 2px; }
-  #selectedList .moveBtn {
-    border: 1px solid #b9d8ff; background: #fff; color: #0d6efd; border-radius: 6px;
-    min-width: 36px; min-height: 36px; font-size: 16px; touch-action: manipulation;
+  #selectedList li.dragging { opacity: 0.4; }
+  #selectedList .dragHandle {
+    cursor: grab; color: #999; font-size: 18px; padding: 4px 2px;
+    touch-action: none; user-select: none;
   }
-  #selectedList .moveBtn:disabled { opacity: 0.3; }
 
   .songCard {
     background: #fff;
@@ -292,6 +292,7 @@ function renderSongList() {
 }
 
 let selectedSongs = [];
+let dragEl = null;
 
 async function loadSelected() {
   selectedSongs = await api("/api/selected");
@@ -302,24 +303,51 @@ function renderSelected() {
   const ul = $("selectedList");
   ul.innerHTML = "";
   const isAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
-  selectedSongs.forEach((s, i) => {
+  selectedSongs.forEach((s) => {
     const li = document.createElement("li");
-    const moveButtons = isAdmin
-      ? `<button class="moveBtn" ${i === 0 ? "disabled" : ""} onclick="event.stopPropagation();moveSelected(${i},-1)">◀</button>
-         <button class="moveBtn" ${i === selectedSongs.length - 1 ? "disabled" : ""} onclick="event.stopPropagation();moveSelected(${i},1)">▶</button>`
-      : "";
-    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>${moveButtons}`;
+    li.dataset.songId = s.songId;
+    const handle = isAdmin ? `<span class="dragHandle">⠿</span>` : "";
+    li.innerHTML = `${handle}<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    if (isAdmin) {
+      const handleEl = li.querySelector(".dragHandle");
+      handleEl.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        dragEl = li;
+        li.classList.add("dragging");
+        handleEl.setPointerCapture(e.pointerId);
+      });
+    }
     ul.appendChild(li);
   });
 }
 
-async function moveSelected(index, delta) {
-  const newIndex = index + delta;
-  if (newIndex < 0 || newIndex >= selectedSongs.length) return;
-  [selectedSongs[index], selectedSongs[newIndex]] = [selectedSongs[newIndex], selectedSongs[index]];
-  renderSelected();
-  await api("/api/selected/reorder", { method: "PUT", body: JSON.stringify({ songIds: selectedSongs.map((s) => s.songId) }) });
+function closestSelectedLi(x, y) {
+  const els = [...document.querySelectorAll("#selectedList li:not(.dragging)")];
+  let closest = null, closestDist = Infinity;
+  for (const el of els) {
+    const box = el.getBoundingClientRect();
+    const dist = Math.hypot(x - (box.left + box.width / 2), y - (box.top + box.height / 2));
+    if (dist < closestDist) { closestDist = dist; closest = { el, box }; }
+  }
+  return closest;
 }
+
+document.addEventListener("pointermove", (e) => {
+  if (!dragEl) return;
+  const target = closestSelectedLi(e.clientX, e.clientY);
+  if (!target) return;
+  const before = e.clientX < target.box.left + target.box.width / 2;
+  target.el.parentNode.insertBefore(dragEl, before ? target.el : target.el.nextSibling);
+});
+
+document.addEventListener("pointerup", async () => {
+  if (!dragEl) return;
+  dragEl.classList.remove("dragging");
+  dragEl = null;
+  const ids = [...document.querySelectorAll("#selectedList li")].map((li) => parseInt(li.dataset.songId, 10));
+  selectedSongs = ids.map((id) => selectedSongs.find((s) => s.songId === id));
+  await api("/api/selected/reorder", { method: "PUT", body: JSON.stringify({ songIds: ids }) });
+});
 
 async function loadSong(songId) {
   currentSong = await api(`/api/songs/${songId}`);

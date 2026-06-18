@@ -9,4 +9,4 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "bsperanta-versuri"
-database_id = "PLACEHOLDER_WILL_BE_SET_AFTER_D1_CREATE"
+database_id = "4e0db2b3-88f8-414d-89d8-cfd0f98201be"

@@ -414,6 +414,7 @@ function fontAdjust(delta) {
 
 async function markSang() {
   if (!currentSong) return;
+  if (!confirm(`Mark "${currentSong.songName}" as sung today?`)) return;
   await api(`/api/songs/${currentSong.songId}/sang`, { method: "POST" });
   alert("Marked as sung today");
 }

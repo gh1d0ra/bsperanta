@@ -175,7 +175,10 @@
         <option value="other">Other</option>
       </select>
     </div>
-    <div class="modal-footer"><button class="btn btn-primary" onclick="saveContent()">Save</button></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline-danger" style="margin-right:auto;" onclick="deleteSong()">Delete Song</button>
+      <button class="btn btn-primary" onclick="saveContent()">Save</button>
+    </div>
   </div></div>
 </div>
 
@@ -489,6 +492,19 @@ function openEditChordsModal() {
     lineNum++;
   });
   jQuery("#editChordsModal").modal("show");
+}
+
+async function deleteSong() {
+  if (!currentSong) return;
+  if (!confirm(`Delete "${currentSong.songName}"? This cannot be undone.`)) return;
+  if (!confirm(`Are you absolutely sure? Type OK to permanently delete "${currentSong.songName}" and its chords.`)) return;
+  await api(`/api/songs/${currentSong.songId}`, { method: "DELETE" });
+  jQuery("#editSongModal").modal("hide");
+  currentSong = null;
+  $("songView").innerHTML = "";
+  history.replaceState(null, "", location.pathname);
+  await loadSongs();
+  if (allSongs.length) loadSong(allSongs[0].songId);
 }
 
 async function saveContent() {

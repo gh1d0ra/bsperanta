@@ -178,6 +178,19 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
+  if (songMatch && method === "DELETE") {
+    const admin = await requireAdmin(request, env);
+    if (!admin) return json({ error: "Unauthorized" }, 401);
+    const songId = parseInt(songMatch[1], 10);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM SONG_CHORDS_NEW WHERE songId = ?").bind(songId),
+      env.DB.prepare("DELETE FROM SONGS_METRICS WHERE songId = ?").bind(songId),
+      env.DB.prepare("DELETE FROM SONGS_SELECTED WHERE songId = ?").bind(songId),
+      env.DB.prepare("DELETE FROM SONGS WHERE songId = ?").bind(songId),
+    ]);
+    return json({ ok: true });
+  }
+
   const chordsMatch = pathname.match(/^\/api\/songs\/(\d+)\/chords$/);
   if (chordsMatch && method === "POST") {
     const admin = await requireAdmin(request, env);

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<title>Versuri - Biserica Speranța</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+<style>
+  #songView { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+  #songView .chordLine { color: gray; font-weight: 600; white-space: pre; }
+  #songList { max-height: 70vh; overflow: auto; }
+  #songList tr { cursor: pointer; }
+  .chordsEditRow { display:flex; gap:8px; align-items:center; margin-bottom:4px; }
+  .chordsEditRow input { width: 140px; }
+</style>
+</head>
+<body>
+<div class="container-fluid">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/">Speranta</a>
+    <div id="authArea"></div>
+  </nav>
+
+  <div class="row" style="margin-top: 10px;">
+    <div class="col-sm-8">
+      <div class="btn-toolbar" style="margin-bottom: 10px;">
+        <button class="btn btn-sm btn-outline-secondary" onclick="transpose(-1)">Down ♭</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(-1)">A-</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(1)">A+</button>
+        <button class="btn btn-sm btn-outline-primary" id="editBtn" style="display:none" onclick="openEditModal()">Edit</button>
+        <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
+        <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
+      </div>
+      <h4 id="songTitle"></h4>
+      <div id="songView"></div>
+    </div>
+    <div class="col-sm-4">
+      <button class="btn btn-sm btn-success" id="newSongBtn" style="display:none" onclick="openNewSongModal()">+ New Song</button>
+      <h5>Selected</h5>
+      <ul id="selectedList" class="list-unstyled"></ul>
+      <h5>All Songs</h5>
+      <input class="form-control form-control-sm" id="searchBox" placeholder="Search..." oninput="renderSongList()">
+      <table class="table table-sm" id="songList"><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal" id="loginModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5>Autentificare</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
+      <input class="form-control" id="loginUser" placeholder="Utilizator" style="margin-bottom:8px;">
+      <input class="form-control" id="loginPass" type="password" placeholder="Parola">
+      <div id="loginError" class="text-danger" style="margin-top:8px;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="doLogin()">Autentifica</button></div>
+  </div></div>
+</div>
+
+<!-- New Song Modal -->
+<div class="modal" id="newSongModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5>Cântarea Nouă</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
+      <input class="form-control" id="newSongTitle" placeholder="Titlul" style="margin-bottom:8px;">
+      <textarea class="form-control" id="newSongContent" rows="10" placeholder="Conținut"></textarea>
+      <select class="form-control" id="newSongType" style="margin-top:8px;">
+        <option value="obste">Obste</option>
+        <option value="christmas">Christmas</option>
+        <option value="harvest">Harvest</option>
+        <option value="easter">Easter</option>
+        <option value="newyear">New Year</option>
+        <option value="pentecost">Pentecost</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="modal-footer"><button class="btn btn-success" onclick="saveNewSong()">Save</button></div>
+  </div></div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5>Editează Cântarea</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
+      <h6>Conținut</h6>
+      <textarea class="form-control" id="editContent" rows="10"></textarea>
+      <button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="saveContent()">Save Content</button>
+      <hr>
+      <h6>Acorduri (per linie)</h6>
+      <div id="chordsEditor"></div>
+      <button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="saveChords()">Save Chords</button>
+    </div>
+  </div></div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let me = { loggedIn: false };
+let allSongs = [];
+let currentSong = null;
+const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT_TO_SHARP = { Ab:"G#", Bb:"A#", Db:"C#", Eb:"D#", Gb:"F#" };
+
+function $(id) { return document.getElementById(id); }
+
+async function api(path, opts) {
+  const res = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || res.statusText);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function renderAuthArea() {
+  const el = $("authArea");
+  if (me.loggedIn) {
+    el.innerHTML = `<span class="mr-2">Logged in as ${me.title}</span> <button class="btn btn-sm btn-outline-secondary" onclick="doLogout()">Log Out</button>`;
+  } else {
+    el.innerHTML = `<button class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#loginModal">Login</button>`;
+  }
+  const showAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
+  $("editBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("sangBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("selectBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
+}
+
+async function refreshMe() {
+  me = await api("/api/me");
+  renderAuthArea();
+}
+
+async function doLogin() {
+  try {
+    me = await api("/api/login", { method: "POST", body: JSON.stringify({ username: $("loginUser").value, password: $("loginPass").value }) });
+    $("loginError").textContent = "";
+    $("loginModal").classList.remove("show");
+    document.querySelector(".modal-backdrop")?.remove();
+    $("loginModal").style.display = "none";
+    renderAuthArea();
+  } catch (e) {
+    $("loginError").textContent = e.message;
+  }
+}
+
+async function doLogout() {
+  await api("/api/logout", { method: "POST" });
+  me = { loggedIn: false };
+  renderAuthArea();
+}
+
+async function loadSongs() {
+  allSongs = await api("/api/songs");
+  renderSongList();
+}
+
+function renderSongList() {
+  const q = $("searchBox").value.toLowerCase();
+  const tbody = document.querySelector("#songList tbody");
+  tbody.innerHTML = "";
+  allSongs
+    .filter((s) => s.songName.toLowerCase().includes(q))
+    .forEach((s) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${s.songName}</td><td>${s.sangCount || 0}</td>`;
+      tr.onclick = () => loadSong(s.songId);
+      tbody.appendChild(tr);
+    });
+}
+
+async function loadSelected() {
+  const selected = await api("/api/selected");
+  const ul = $("selectedList");
+  ul.innerHTML = "";
+  selected.forEach((s) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    ul.appendChild(li);
+  });
+}
+
+async function loadSong(songId) {
+  currentSong = await api(`/api/songs/${songId}`);
+  history.replaceState(null, "", `?song=${songId}`);
+  $("songTitle").textContent = currentSong.songName;
+  document.title = currentSong.songName;
+  const chordMap = {};
+  currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
+  const lines = currentSong.songContent.split("\n");
+  let stanza = 0, lineNum = 1;
+  const out = [];
+  for (const line of lines) {
+    if (line.trim() === "") {
+      stanza++; lineNum = 1;
+      out.push(`<hr>`);
+      continue;
+    }
+    const chords = chordMap[`${stanza}-${lineNum}`];
+    if (chords && chords.replace(/[\[\]]/g, "").trim() !== "") {
+      out.push(`<div class="chordLine">${chords}</div>`);
+    }
+    out.push(`<div>${line}</div>`);
+    lineNum++;
+  }
+  $("songView").innerHTML = out.join("");
+}
+
+function transposeChord(token, up) {
+  let m = token.match(/^([A-G]#?)(m?)(7?)(?:\/([A-G]#?)(m?)(7?))?$/);
+  if (!m) return token;
+  function shift(note) {
+    note = FLAT_TO_SHARP[note] || note;
+    let idx = NOTE_ORDER.indexOf(note);
+    if (idx === -1) return note;
+    idx = (idx + (up ? 1 : -1) + 12) % 12;
+    return NOTE_ORDER[idx];
+  }
+  let result = shift(m[1]) + m[2] + m[3];
+  if (m[4]) result += "/" + shift(m[4]) + m[5] + m[6];
+  return result;
+}
+
+function transpose(direction) {
+  document.querySelectorAll(".chordLine").forEach((el) => {
+    el.textContent = el.textContent.replace(/\[([^\]]*)\]/g, (full, inner) => {
+      if (!inner.trim()) return full;
+      return "[" + transposeChord(inner, direction > 0) + "]";
+    });
+  });
+}
+
+function fontAdjust(delta) {
+  const el = $("songView");
+  const current = parseInt(getComputedStyle(el).fontSize) || 16;
+  el.style.fontSize = (current + delta) + "px";
+}
+
+async function markSang() {
+  if (!currentSong) return;
+  await api(`/api/songs/${currentSong.songId}/sang`, { method: "POST" });
+  alert("Marked as sung today");
+}
+
+async function addSelected() {
+  if (!currentSong) return;
+  await api("/api/selected", { method: "POST", body: JSON.stringify({ songId: currentSong.songId }) });
+  loadSelected();
+}
+
+function openNewSongModal() {
+  $("newSongModal").style.display = "block";
+  $("newSongModal").classList.add("show");
+}
+
+async function saveNewSong() {
+  await api("/api/songs", {
+    method: "POST",
+    body: JSON.stringify({ name: $("newSongTitle").value, content: $("newSongContent").value, type: $("newSongType").value }),
+  });
+  $("newSongModal").style.display = "none";
+  $("newSongModal").classList.remove("show");
+  loadSongs();
+}
+
+function openEditModal() {
+  if (!currentSong) return;
+  $("editContent").value = currentSong.songContent;
+  const editor = $("chordsEditor");
+  editor.innerHTML = "";
+  const lines = currentSong.songContent.split("\n");
+  const chordMap = {};
+  currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
+  let stanza = 0, lineNum = 1;
+  lines.forEach((line) => {
+    if (line.trim() === "") { stanza++; lineNum = 1; return; }
+    const row = document.createElement("div");
+    row.className = "chordsEditRow";
+    row.dataset.stanza = stanza;
+    row.dataset.line = lineNum;
+    row.innerHTML = `<input class="form-control form-control-sm chordsInput" value="${(chordMap[`${stanza}-${lineNum}`] || "").replace(/"/g,'&quot;')}"><span>${line}</span>`;
+    editor.appendChild(row);
+    lineNum++;
+  });
+  $("editModal").style.display = "block";
+  $("editModal").classList.add("show");
+}
+
+async function saveContent() {
+  await api(`/api/songs/${currentSong.songId}`, { method: "PUT", body: JSON.stringify({ content: $("editContent").value }) });
+  loadSong(currentSong.songId);
+}
+
+async function saveChords() {
+  const entries = [];
+  document.querySelectorAll("#chordsEditor .chordsEditRow").forEach((row) => {
+    entries.push({ stanza: parseInt(row.dataset.stanza), line: parseInt(row.dataset.line), chords: row.querySelector(".chordsInput").value });
+  });
+  await api(`/api/songs/${currentSong.songId}/chords`, { method: "POST", body: JSON.stringify({ entries }) });
+  $("editModal").style.display = "none";
+  $("editModal").classList.remove("show");
+  loadSong(currentSong.songId);
+}
+
+(async function init() {
+  await refreshMe();
+  await loadSongs();
+  await loadSelected();
+  const params = new URLSearchParams(location.search);
+  const songParam = params.get("song");
+  if (songParam) loadSong(parseInt(songParam, 10));
+  else if (allSongs.length) loadSong(allSongs[0].songId);
+})();
+</script>
+</body>
+</html>

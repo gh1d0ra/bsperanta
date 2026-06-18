@@ -169,9 +169,11 @@ async function handleApi(request, env, url) {
     const admin = await requireAdmin(request, env);
     if (!admin) return json({ error: "Unauthorized" }, 401);
     const songId = parseInt(songMatch[1], 10);
-    const { content } = await request.json();
-    await env.DB.prepare("UPDATE SONGS SET songContent = ?, lastUpdated = CURRENT_TIMESTAMP WHERE songId = ?")
-      .bind(content, songId)
+    const { content, type } = await request.json();
+    await env.DB.prepare(
+      "UPDATE SONGS SET songContent = ?, songType = ?, lastUpdated = CURRENT_TIMESTAMP WHERE songId = ?"
+    )
+      .bind(content, type || "other", songId)
       .run();
     return json({ ok: true });
   }

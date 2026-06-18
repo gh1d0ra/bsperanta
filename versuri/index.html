@@ -111,6 +111,17 @@
     <div class="modal-header"><h5>Editează Versurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <textarea class="form-control" id="editContent" rows="14"></textarea>
+      <select class="form-control" id="editType" style="margin-top:8px;">
+        <option value="obste">Obste</option>
+        <option value="christmas">Christmas</option>
+        <option value="harvest">Harvest</option>
+        <option value="easter">Easter</option>
+        <option value="newyear">New Year</option>
+        <option value="pentecost">Pentecost</option>
+        <option value="grup">Grup</option>
+        <option value="instrumental">Instrumental</option>
+        <option value="other">Other</option>
+      </select>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" onclick="saveContent()">Save</button></div>
   </div></div>
@@ -327,6 +338,14 @@ async function saveNewSong() {
 function openEditSongModal() {
   if (!currentSong) return;
   $("editContent").value = currentSong.songContent;
+  const typeSelect = $("editType");
+  if (currentSong.songType && ![...typeSelect.options].some((o) => o.value === currentSong.songType)) {
+    const opt = document.createElement("option");
+    opt.value = currentSong.songType;
+    opt.textContent = currentSong.songType;
+    typeSelect.appendChild(opt);
+  }
+  typeSelect.value = currentSong.songType || "other";
   jQuery("#editSongModal").modal("show");
 }
 
@@ -353,9 +372,13 @@ function openEditChordsModal() {
 }
 
 async function saveContent() {
-  await api(`/api/songs/${currentSong.songId}`, { method: "PUT", body: JSON.stringify({ content: $("editContent").value }) });
+  await api(`/api/songs/${currentSong.songId}`, {
+    method: "PUT",
+    body: JSON.stringify({ content: $("editContent").value, type: $("editType").value }),
+  });
   jQuery("#editSongModal").modal("hide");
   loadSong(currentSong.songId);
+  loadSongs();
 }
 
 async function saveChords() {

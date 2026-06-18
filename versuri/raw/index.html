@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<title>Versuri</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; color: #fff; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #songView {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 32px;
+    line-height: 1.6;
+    padding: 32px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  #songView hr { border: none; border-top: 1px solid #333; margin: 24px 0; }
+  @media (max-width: 768px) {
+    #songView { font-size: 24px; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="songView"></div>
+<script>
+let lastSongId = null;
+
+async function poll() {
+  try {
+    const res = await fetch("/api/published");
+    const data = await res.json();
+    if (data.songId && data.songId !== lastSongId) {
+      lastSongId = data.songId;
+      await showSong(data.songId);
+    } else if (!data.songId && lastSongId !== null) {
+      lastSongId = null;
+      document.getElementById("songView").innerHTML = "";
+    }
+  } catch (e) {
+    // ignore transient network errors, keep showing last content
+  }
+}
+
+async function showSong(songId) {
+  const res = await fetch(`/api/songs/${songId}`);
+  if (!res.ok) return;
+  const song = await res.json();
+  const lines = song.songContent.split("\n");
+  const out = [];
+  for (const line of lines) {
+    if (line.trim() === "") {
+      out.push("<hr>");
+      continue;
+    }
+    out.push(`<div>${line}</div>`);
+  }
+  document.getElementById("songView").innerHTML = out.join("");
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>

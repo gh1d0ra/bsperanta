@@ -87,6 +87,7 @@
     <button class="btn btn-sm btn-outline-primary" id="editChordsBtn" style="display:none" onclick="openEditChordsModal()">Edit Chords</button>
     <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
     <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
+    <button class="btn btn-sm btn-outline-warning" id="publishBtn" style="display:none" onclick="publishSong()">Publish</button>
     <div id="authArea"></div>
   </nav>
 
@@ -225,6 +226,7 @@ function renderAuthArea() {
   $("editChordsBtn").style.display = showAdmin ? "inline-block" : "none";
   $("sangBtn").style.display = showAdmin ? "inline-block" : "none";
   $("selectBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("publishBtn").style.display = showAdmin ? "inline-block" : "none";
   $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
   if (typeof selectedSongs !== "undefined") renderSelected();
 }
@@ -441,6 +443,12 @@ async function addSelected() {
   if (!currentSong) return;
   await api("/api/selected", { method: "POST", body: JSON.stringify({ songId: currentSong.songId }) });
   loadSelected();
+}
+
+async function publishSong() {
+  if (!currentSong) return;
+  await api("/api/published", { method: "POST", body: JSON.stringify({ songId: currentSong.songId }) });
+  alert(`Published "${currentSong.songName}"`);
 }
 
 function openNewSongModal() {

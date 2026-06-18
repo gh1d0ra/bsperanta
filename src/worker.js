@@ -273,6 +273,24 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
+  if (pathname === "/api/published" && method === "GET") {
+    const row = await env.DB.prepare("SELECT songId FROM PUBLISHED_SONG WHERE id = 1").first();
+    return json({ songId: row ? row.songId : null });
+  }
+
+  if (pathname === "/api/published" && method === "POST") {
+    const admin = await requireAdmin(request, env);
+    if (!admin) return json({ error: "Unauthorized" }, 401);
+    const { songId } = await request.json();
+    await env.DB.prepare(
+      `INSERT INTO PUBLISHED_SONG (id, songId, updatedAt) VALUES (1, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(id) DO UPDATE SET songId = excluded.songId, updatedAt = CURRENT_TIMESTAMP`
+    )
+      .bind(songId)
+      .run();
+    return json({ ok: true });
+  }
+
   return json({ error: "Not found" }, 404);
 }
 

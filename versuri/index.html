@@ -55,7 +55,6 @@
     margin-top: 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
-  #songTitle { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; }
 
   @media (max-width: 768px) {
     .container-fluid { padding-left: 8px; padding-right: 8px; }
@@ -86,7 +85,6 @@
         <ul id="selectedList"></ul>
       </div>
       <div class="songCard">
-        <h4 id="songTitle"></h4>
         <div id="songView"></div>
       </div>
     </div>
@@ -298,7 +296,6 @@ async function loadSelected() {
 async function loadSong(songId) {
   currentSong = await api(`/api/songs/${songId}`);
   history.replaceState(null, "", `?song=${songId}`);
-  $("songTitle").textContent = currentSong.songName;
   document.title = currentSong.songName;
   const chordMap = {};
   currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));

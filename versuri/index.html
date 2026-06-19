@@ -94,7 +94,9 @@
   <div class="row">
     <div class="col-12">
       <div class="selectedPanel">
-        <h6>Selected</h6>
+        <h6>Selected
+          <a href="/api/selected/export" id="exportSelectedBtn" style="display:none; text-transform:none; font-size:13px; margin-left:8px;">⬇ Export for ProPresenter</a>
+        </h6>
         <ul id="selectedList"></ul>
       </div>
       <div class="songCard">
@@ -313,6 +315,7 @@ async function loadSelected() {
 function renderSelected() {
   const ul = $("selectedList");
   ul.innerHTML = "";
+  $("exportSelectedBtn").style.display = selectedSongs.length ? "inline" : "none";
   const isAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
   selectedSongs.forEach((s) => {
     const li = document.createElement("li");

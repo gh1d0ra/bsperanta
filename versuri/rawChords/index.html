@@ -92,7 +92,7 @@ function render() {
 }
 
 function transposeChord(token, up) {
-  let m = token.match(/^([A-G]#?)(m?)(7?)(?:\/([A-G]#?)(m?)(7?))?$/);
+  let m = token.match(/^([A-G][#b]?)(m?)(7?)(?:\/([A-G][#b]?)(m?)(7?))?$/);
   if (!m) return token;
   function shift(note) {
     note = FLAT_TO_SHARP[note] || note;

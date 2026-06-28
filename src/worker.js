@@ -334,10 +334,9 @@ async function handleApi(request, env, url) {
        WHERE s.songId = se.songId ORDER BY se.songOrder`
     ).all();
     const enc = new TextEncoder();
-    const files = results.map((s, i) => {
+    const files = results.map((s) => {
       const safeName = s.songName.replace(/[\\/:*?"<>|]/g, "").trim();
-      const prefix = String(i + 1).padStart(2, "0");
-      return { name: `${prefix} - ${safeName}.txt`, data: enc.encode(s.songContent) };
+      return { name: `${safeName}.txt`, data: enc.encode(s.songContent) };
     });
     const zip = buildZip(files);
     return new Response(zip, {

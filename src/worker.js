@@ -215,6 +215,23 @@ function zipResponse(songs, filename) {
   });
 }
 
+// Every song of a list with its chords, in one response, so the page can show
+// the whole list without further network calls. idsSql selects the songIds.
+async function fullSongs(env, idsSql, binds) {
+  const [songs, chords] = await env.DB.batch([
+    env.DB.prepare(`SELECT * FROM SONGS WHERE songId IN (${idsSql})`).bind(...binds),
+    env.DB.prepare(
+      `SELECT songId, stanzaNumber, lineNumber, chords FROM SONG_CHORDS_NEW
+       WHERE songId IN (${idsSql}) ORDER BY songId, stanzaNumber, lineNumber`
+    ).bind(...binds),
+  ]);
+  const bySong = {};
+  for (const c of chords.results) {
+    (bySong[c.songId] ||= []).push({ stanzaNumber: c.stanzaNumber, lineNumber: c.lineNumber, chords: c.chords });
+  }
+  return songs.results.map((s) => ({ ...s, chords: bySong[s.songId] || [] }));
+}
+
 async function handleServicesApi(request, env, url) {
   const { pathname } = url;
   const method = request.method;
@@ -245,7 +262,7 @@ async function handleServicesApi(request, env, url) {
     return json({ ok: true, serviceId: row.serviceId });
   }
 
-  const m = pathname.match(/^\/api\/services\/(\d+)(?:\/(songs|reorder|export)(?:\/(\d+))?)?$/);
+  const m = pathname.match(/^\/api\/services\/(\d+)(?:\/(songs|reorder|export|full)(?:\/(\d+))?)?$/);
   if (!m) return json({ error: "Not found" }, 404);
   const serviceId = parseInt(m[1], 10);
   const sub = m[2];
@@ -271,6 +288,10 @@ async function handleServicesApi(request, env, url) {
       .bind(serviceId)
       .all();
     return json(results);
+  }
+
+  if (sub === "full" && method === "GET") {
+    return json(await fullSongs(env, "SELECT songId FROM SERVICE_SONGS WHERE serviceId = ?", [serviceId]));
   }
 
   if (sub === "export" && method === "GET") {
@@ -473,6 +494,10 @@ async function handleApi(request, env, url) {
        WHERE s.songId = se.songId ORDER BY se.songOrder`
     ).all();
     return json(results);
+  }
+
+  if (pathname === "/api/selected/full" && method === "GET") {
+    return json(await fullSongs(env, "SELECT songId FROM SONGS_SELECTED", []));
   }
 
   if (pathname === "/api/selected/export" && method === "GET") {

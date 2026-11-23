@@ -104,6 +104,7 @@
           <button class="btn btn-sm btn-outline-success adminOnly" style="display:none" onclick="openNewServiceModal()">+ Service</button>
           <button class="btn btn-sm btn-outline-danger adminOnly" id="deleteServiceBtn" style="display:none" onclick="deleteService()">Delete service</button>
           <a href="/api/selected/export" id="exportSelectedBtn" style="display:none; font-size:13px;">⬇ Export for ProPresenter</a>
+          <span id="offlineStatus" style="font-size:13px;"></span>
         </div>
         <ul id="selectedList"></ul>
       </div>
@@ -259,7 +260,7 @@ function renderAuthArea() {
 }
 
 async function refreshMe() {
-  me = await api("/api/me");
+  try { me = await api("/api/me"); } catch (e) { me = { loggedIn: false }; }
   renderAuthArea();
 }
 
@@ -281,7 +282,12 @@ async function doLogout() {
 }
 
 async function loadSongs() {
-  allSongs = await api("/api/songs");
+  try {
+    allSongs = await api("/api/songs");
+    try { localStorage.setItem("versuriOffline:songs", JSON.stringify(allSongs)); } catch (e) {}
+  } catch (e) {
+    allSongs = JSON.parse(localStorage.getItem("versuriOffline:songs") || "[]");
+  }
   renderSongList();
 }
 
@@ -364,7 +370,12 @@ function escapeHtml(str) {
 }
 
 async function loadServices() {
-  services = await api("/api/services");
+  try {
+    services = await api("/api/services");
+    localStorage.setItem("versuriOffline:services", JSON.stringify(services));
+  } catch (e) {
+    services = JSON.parse(localStorage.getItem("versuriOffline:services") || "[]");
+  }
   if (currentList && !services.some((s) => s.serviceId === currentList)) currentList = 0;
   renderListControls();
 }
@@ -417,8 +428,56 @@ async function deleteService() {
   await switchList(0);
 }
 
+// ---- Offline support ----
+// When a list loads, every song in it (lyrics + chords) is fetched in one call
+// and kept in songCache, so switching songs needs no network. The list is also
+// saved to localStorage so it still works if the connection drops later.
+const songCache = {};
+let offlineMode = false;
+
+function offlineKey(list) { return `versuriOffline:${list}`; }
+
+function saveOfflineList() {
+  const full = selectedSongs.map((s) => songCache[s.songId]).filter(Boolean);
+  try {
+    localStorage.setItem(offlineKey(currentList), JSON.stringify({ songs: selectedSongs, full, savedAt: Date.now() }));
+  } catch (e) { /* storage full: in-memory cache still works */ }
+}
+
+function loadOfflineList() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(offlineKey(currentList)) || "null");
+    if (!saved) return false;
+    selectedSongs = saved.songs;
+    saved.full.forEach((s) => (songCache[s.songId] = s));
+    return saved.savedAt;
+  } catch (e) { return false; }
+}
+
+function setOfflineStatus(text, warn) {
+  const el = $("offlineStatus");
+  el.textContent = text;
+  el.style.color = warn ? "#b45309" : "#2e7d32";
+}
+
 async function loadSelected() {
-  selectedSongs = await api(listSongsUrl());
+  try {
+    const [list, full] = await Promise.all([api(listSongsUrl()), api(listUrl("/full"))]);
+    full.forEach((s) => (songCache[s.songId] = s));
+    selectedSongs = list;
+    offlineMode = false;
+    saveOfflineList();
+    setOfflineStatus(list.length ? `✓ ${list.length} songs ready offline` : "", false);
+  } catch (e) {
+    const savedAt = loadOfflineList();
+    offlineMode = true;
+    if (savedAt) {
+      setOfflineStatus(`Offline – saved copy from ${new Date(savedAt).toLocaleString("ro-RO")}`, true);
+    } else {
+      selectedSongs = [];
+      setOfflineStatus("Offline – this list was not saved on this device", true);
+    }
+  }
   renderSelected();
 }
 
@@ -494,8 +553,24 @@ document.addEventListener("pointerup", async () => {
   await api(listUrl("/reorder"), { method: "PUT", body: JSON.stringify({ songIds: ids }) });
 });
 
-async function loadSong(songId) {
-  currentSong = await api(`/api/songs/${songId}`);
+// Shows a song from songCache when it is there (no network call);
+// otherwise fetches it. force = true refetches, e.g. after an edit.
+async function loadSong(songId, force = false) {
+  let song = force ? null : songCache[songId];
+  if (!song) {
+    try {
+      song = await api(`/api/songs/${songId}`);
+      songCache[songId] = song;
+      if (selectedSongs.some((s) => s.songId === songId)) saveOfflineList();
+    } catch (e) {
+      song = songCache[songId];
+      if (!song) {
+        $("songView").innerHTML = `<p class="text-muted">This song is not available offline. Reconnect to load it.</p>`;
+        return;
+      }
+    }
+  }
+  currentSong = song;
   history.replaceState(null, "", `?song=${songId}`);
   document.title = currentSong.songName;
   const chordMap = {};
@@ -646,6 +721,7 @@ async function deleteSong() {
   if (!confirm(`Delete "${currentSong.songName}"? This cannot be undone.`)) return;
   if (!confirm(`Are you absolutely sure? Type OK to permanently delete "${currentSong.songName}" and its chords.`)) return;
   await api(`/api/songs/${currentSong.songId}`, { method: "DELETE" });
+  delete songCache[currentSong.songId];
   jQuery("#editSongModal").modal("hide");
   currentSong = null;
   $("songView").innerHTML = "";
@@ -660,7 +736,7 @@ async function saveContent() {
     body: JSON.stringify({ content: $("editContent").value, type: $("editType").value }),
   });
   jQuery("#editSongModal").modal("hide");
-  loadSong(currentSong.songId);
+  loadSong(currentSong.songId, true);
   loadSongs();
 }
 
@@ -671,8 +747,10 @@ async function saveChords() {
   });
   await api(`/api/songs/${currentSong.songId}/chords`, { method: "POST", body: JSON.stringify({ entries }) });
   jQuery("#editChordsModal").modal("hide");
-  loadSong(currentSong.songId);
+  loadSong(currentSong.songId, true);
 }
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/versuri/sw.js").catch(() => {});
 
 (async function init() {
   await refreshMe();

@@ -39,6 +39,9 @@
     font-size: 13px;
     letter-spacing: 0.05em;
   }
+  .listBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .listBar #listPicker { width: auto; max-width: 100%; font-weight: 600; }
+  #selectedEmpty { color: #777; font-style: italic; font-size: 15px; }
   #selectedList { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
   #selectedList li { list-style: none; }
   #selectedList a {
@@ -94,9 +97,14 @@
   <div class="row">
     <div class="col-12">
       <div class="selectedPanel">
-        <h6>Selected
-          <a href="/api/selected/export" id="exportSelectedBtn" style="display:none; text-transform:none; font-size:13px; margin-left:8px;">⬇ Export for ProPresenter</a>
-        </h6>
+        <div class="listBar">
+          <select id="listPicker" class="form-control" onchange="switchList(this.value)">
+            <option value="0">Selected</option>
+          </select>
+          <button class="btn btn-sm btn-outline-success adminOnly" style="display:none" onclick="openNewServiceModal()">+ Service</button>
+          <button class="btn btn-sm btn-outline-danger adminOnly" id="deleteServiceBtn" style="display:none" onclick="deleteService()">Delete service</button>
+          <a href="/api/selected/export" id="exportSelectedBtn" style="display:none; font-size:13px;">⬇ Export for ProPresenter</a>
+        </div>
         <ul id="selectedList"></ul>
       </div>
       <div class="songCard">
@@ -124,6 +132,21 @@
         <tbody></tbody>
       </table>
     </div>
+  </div></div>
+</div>
+
+<!-- New Service Modal -->
+<div class="modal" id="newServiceModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5>Program nou</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-body">
+      <label for="newServiceDate">Data</label>
+      <input class="form-control" id="newServiceDate" type="date" style="margin-bottom:8px;">
+      <label for="newServiceName">Nume (ex. Crăciun)</label>
+      <input class="form-control" id="newServiceName" maxlength="100">
+      <div id="newServiceError" class="text-danger" style="margin-top:8px;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-success" onclick="saveNewService()">Create</button></div>
   </div></div>
 </div>
 
@@ -232,6 +255,7 @@ function renderAuthArea() {
   $("publishBtn").style.display = showAdmin ? "inline-block" : "none";
   $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
   if (typeof selectedSongs !== "undefined") renderSelected();
+  if (typeof renderListControls !== "undefined") renderListControls();
 }
 
 async function refreshMe() {
@@ -307,8 +331,94 @@ let selectedSongs = [];
 let dragEl = null;
 let dragStartX = 0, dragStartY = 0, dragMoved = false;
 
+// Which song list the panel shows: 0 = "Selected", otherwise a pre-planned service id.
+let currentList = 0;
+let services = [];
+
+function listUrl(suffix = "") {
+  return currentList ? `/api/services/${currentList}${suffix}` : `/api/selected${suffix}`;
+}
+function listSongsUrl() { return currentList ? listUrl("/songs") : listUrl(); }
+function listSongUrl(songId) { return currentList ? listUrl(`/songs/${songId}`) : listUrl(`/${songId}`); }
+
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function serviceLabel(s) {
+  const [y, m, d] = s.serviceDate.split("-");
+  let label = `${d}.${m}.${y}`;
+  if (s.serviceName) label += ` – ${s.serviceName}`;
+  if (s.serviceDate === todayIso()) label += " (azi)";
+  return label;
+}
+
+function currentListName() {
+  const s = services.find((x) => x.serviceId === currentList);
+  return s ? serviceLabel(s) : "Selected";
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function loadServices() {
+  services = await api("/api/services");
+  if (currentList && !services.some((s) => s.serviceId === currentList)) currentList = 0;
+  renderListControls();
+}
+
+function renderListControls() {
+  const picker = $("listPicker");
+  picker.innerHTML = `<option value="0">Selected</option>` +
+    services.map((s) => `<option value="${s.serviceId}">${escapeHtml(serviceLabel(s))}</option>`).join("");
+  picker.value = String(currentList);
+  const isAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
+  document.querySelectorAll(".adminOnly").forEach((el) => (el.style.display = isAdmin ? "inline-block" : "none"));
+  $("deleteServiceBtn").style.display = isAdmin && currentList ? "inline-block" : "none";
+  $("selectBtn").textContent = currentList ? "Add to Service" : "Add to Selected";
+  $("selectBtn").title = `Add to ${currentListName()}`;
+}
+
+async function switchList(value) {
+  currentList = parseInt(value, 10) || 0;
+  localStorage.setItem("versuriList", String(currentList));
+  renderListControls();
+  await loadSelected();
+}
+
+function openNewServiceModal() {
+  $("newServiceDate").value = "";
+  $("newServiceName").value = "";
+  $("newServiceError").textContent = "";
+  jQuery("#newServiceModal").modal("show");
+}
+
+async function saveNewService() {
+  try {
+    const res = await api("/api/services", {
+      method: "POST",
+      body: JSON.stringify({ date: $("newServiceDate").value, name: $("newServiceName").value }),
+    });
+    jQuery("#newServiceModal").modal("hide");
+    await loadServices();
+    await switchList(res.serviceId);
+  } catch (e) {
+    $("newServiceError").textContent = e.message;
+  }
+}
+
+async function deleteService() {
+  if (!currentList) return;
+  if (!confirm(`Delete the service "${currentListName()}"? The songs themselves are not deleted.`)) return;
+  await api(`/api/services/${currentList}`, { method: "DELETE" });
+  await loadServices();
+  await switchList(0);
+}
+
 async function loadSelected() {
-  selectedSongs = await api("/api/selected");
+  selectedSongs = await api(listSongsUrl());
   renderSelected();
 }
 
@@ -316,6 +426,10 @@ function renderSelected() {
   const ul = $("selectedList");
   ul.innerHTML = "";
   $("exportSelectedBtn").style.display = selectedSongs.length ? "inline" : "none";
+  $("exportSelectedBtn").href = listUrl("/export");
+  if (!selectedSongs.length && currentList) {
+    ul.innerHTML = `<li id="selectedEmpty">No songs in this service yet.</li>`;
+  }
   const isAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
   selectedSongs.forEach((s) => {
     const li = document.createElement("li");
@@ -368,8 +482,8 @@ document.addEventListener("pointerup", async () => {
 
   if (!moved) {
     const song = selectedSongs.find((s) => s.songId === songId);
-    if (song && confirm(`Remove "${song.songName}" from Selected?`)) {
-      await api(`/api/selected/${songId}`, { method: "DELETE" });
+    if (song && confirm(`Remove "${song.songName}" from ${currentListName()}?`)) {
+      await api(listSongUrl(songId), { method: "DELETE" });
       loadSelected();
     }
     return;
@@ -377,7 +491,7 @@ document.addEventListener("pointerup", async () => {
 
   const ids = [...document.querySelectorAll("#selectedList li")].map((li) => parseInt(li.dataset.songId, 10));
   selectedSongs = ids.map((id) => selectedSongs.find((s) => s.songId === id));
-  await api("/api/selected/reorder", { method: "PUT", body: JSON.stringify({ songIds: ids }) });
+  await api(listUrl("/reorder"), { method: "PUT", body: JSON.stringify({ songIds: ids }) });
 });
 
 async function loadSong(songId) {
@@ -445,8 +559,9 @@ async function markSang() {
 
 async function addSelected() {
   if (!currentSong) return;
-  await api("/api/selected", { method: "POST", body: JSON.stringify({ songId: currentSong.songId }) });
+  await api(listSongsUrl(), { method: "POST", body: JSON.stringify({ songId: currentSong.songId }) });
   loadSelected();
+  if (currentList) loadServices();
 }
 
 async function publishSong() {
@@ -562,8 +677,10 @@ async function saveChords() {
 (async function init() {
   await refreshMe();
   await loadSongs();
-  await loadSelected();
   const params = new URLSearchParams(location.search);
+  currentList = parseInt(params.get("list") || localStorage.getItem("versuriList") || "0", 10) || 0;
+  await loadServices();
+  await loadSelected();
   const songParam = params.get("song");
   if (songParam) loadSong(parseInt(songParam, 10));
 })();

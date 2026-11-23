@@ -174,9 +174,154 @@ function getRealIp(request) {
 
 const ACTIVE_SONG_TYPE_EXCLUDE = ["nastere", "paste", "seceris", "none"];
 
+// Pre-planned services: a dated, named song list (e.g. 2026-12-25 "Crăciun").
+// Tables are created on first use, so no manual D1 migration is needed.
+let serviceTablesReady = false;
+async function ensureServiceTables(env) {
+  if (serviceTablesReady) return;
+  await env.DB.batch([
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS SERVICES (
+         serviceId INTEGER PRIMARY KEY AUTOINCREMENT,
+         serviceDate TEXT NOT NULL,
+         serviceName TEXT NOT NULL DEFAULT '',
+         createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+       )`
+    ),
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS SERVICE_SONGS (
+         serviceId INTEGER NOT NULL,
+         songId INTEGER NOT NULL,
+         songOrder INTEGER NOT NULL,
+         PRIMARY KEY (serviceId, songId)
+       )`
+    ),
+  ]);
+  serviceTablesReady = true;
+}
+
+function zipResponse(songs, filename) {
+  const enc = new TextEncoder();
+  const files = songs.map((s) => {
+    const safeName = s.songName.replace(/[\\/:*?"<>|]/g, "").trim();
+    return { name: `${safeName}.txt`, data: enc.encode(s.songContent) };
+  });
+  return new Response(buildZip(files), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
+}
+
+async function handleServicesApi(request, env, url) {
+  const { pathname } = url;
+  const method = request.method;
+  await ensureServiceTables(env);
+
+  if (pathname === "/api/services" && method === "GET") {
+    // Upcoming services plus the past week; ?all=1 for every service.
+    const all = url.searchParams.get("all") === "1";
+    const { results } = await env.DB.prepare(
+      `SELECT sv.serviceId, sv.serviceDate, sv.serviceName,
+              (SELECT COUNT(*) FROM SERVICE_SONGS ss WHERE ss.serviceId = sv.serviceId) AS songCount
+       FROM SERVICES sv
+       ${all ? "" : "WHERE sv.serviceDate >= date('now', '-7 days')"}
+       ORDER BY sv.serviceDate, sv.serviceId`
+    ).all();
+    return json(results);
+  }
+
+  if (pathname === "/api/services" && method === "POST") {
+    if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401);
+    const { date, name } = await request.json();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return json({ error: "Invalid date" }, 400);
+    const row = await env.DB.prepare(
+      "INSERT INTO SERVICES (serviceDate, serviceName) VALUES (?, ?) RETURNING serviceId"
+    )
+      .bind(date, (name || "").trim())
+      .first();
+    return json({ ok: true, serviceId: row.serviceId });
+  }
+
+  const m = pathname.match(/^\/api\/services\/(\d+)(?:\/(songs|reorder|export)(?:\/(\d+))?)?$/);
+  if (!m) return json({ error: "Not found" }, 404);
+  const serviceId = parseInt(m[1], 10);
+  const sub = m[2];
+  const songId = m[3] ? parseInt(m[3], 10) : null;
+
+  const service = await env.DB.prepare("SELECT * FROM SERVICES WHERE serviceId = ?").bind(serviceId).first();
+  if (!service) return json({ error: "Service not found" }, 404);
+
+  if (!sub && method === "DELETE") {
+    if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM SERVICE_SONGS WHERE serviceId = ?").bind(serviceId),
+      env.DB.prepare("DELETE FROM SERVICES WHERE serviceId = ?").bind(serviceId),
+    ]);
+    return json({ ok: true });
+  }
+
+  if (sub === "songs" && !songId && method === "GET") {
+    const { results } = await env.DB.prepare(
+      `SELECT s.songId, s.songName FROM SERVICE_SONGS ss JOIN SONGS s ON s.songId = ss.songId
+       WHERE ss.serviceId = ? ORDER BY ss.songOrder`
+    )
+      .bind(serviceId)
+      .all();
+    return json(results);
+  }
+
+  if (sub === "export" && method === "GET") {
+    const { results } = await env.DB.prepare(
+      `SELECT s.songId, s.songName, s.songContent FROM SERVICE_SONGS ss JOIN SONGS s ON s.songId = ss.songId
+       WHERE ss.serviceId = ? ORDER BY ss.songOrder`
+    )
+      .bind(serviceId)
+      .all();
+    const label = `${service.serviceDate} ${service.serviceName}`.replace(/[^\w\- ]/g, "").trim().replace(/ +/g, "-");
+    return zipResponse(results, `${label || "service"}.zip`);
+  }
+
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401);
+
+  if (sub === "songs" && !songId && method === "POST") {
+    const body = await request.json();
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO SERVICE_SONGS (serviceId, songId, songOrder)
+       VALUES (?, ?, (SELECT IFNULL(MAX(songOrder), 0) + 1 FROM SERVICE_SONGS WHERE serviceId = ?))`
+    )
+      .bind(serviceId, parseInt(body.songId, 10), serviceId)
+      .run();
+    return json({ ok: true });
+  }
+
+  if (sub === "songs" && songId && method === "DELETE") {
+    await env.DB.prepare("DELETE FROM SERVICE_SONGS WHERE serviceId = ? AND songId = ?").bind(serviceId, songId).run();
+    return json({ ok: true });
+  }
+
+  if (sub === "reorder" && method === "PUT") {
+    const { songIds } = await request.json();
+    await env.DB.batch(
+      songIds.map((id, i) =>
+        env.DB.prepare("UPDATE SERVICE_SONGS SET songOrder = ? WHERE serviceId = ? AND songId = ?").bind(i + 1, serviceId, id)
+      )
+    );
+    return json({ ok: true });
+  }
+
+  return json({ error: "Not found" }, 404);
+}
+
 async function handleApi(request, env, url) {
   const { pathname } = url;
   const method = request.method;
+
+  if (pathname === "/api/services" || pathname.startsWith("/api/services/")) {
+    return handleServicesApi(request, env, url);
+  }
 
   if (pathname === "/api/me" && method === "GET") {
     const user = await getSessionUser(request, env);
@@ -275,6 +420,8 @@ async function handleApi(request, env, url) {
       env.DB.prepare("DELETE FROM SONGS_SELECTED WHERE songId = ?").bind(songId),
       env.DB.prepare("DELETE FROM SONGS WHERE songId = ?").bind(songId),
     ]);
+    await ensureServiceTables(env);
+    await env.DB.prepare("DELETE FROM SERVICE_SONGS WHERE songId = ?").bind(songId).run();
     return json({ ok: true });
   }
 
@@ -333,19 +480,7 @@ async function handleApi(request, env, url) {
       `SELECT s.songId, s.songName, s.songContent FROM SONGS s, SONGS_SELECTED se
        WHERE s.songId = se.songId ORDER BY se.songOrder`
     ).all();
-    const enc = new TextEncoder();
-    const files = results.map((s) => {
-      const safeName = s.songName.replace(/[\\/:*?"<>|]/g, "").trim();
-      return { name: `${safeName}.txt`, data: enc.encode(s.songContent) };
-    });
-    const zip = buildZip(files);
-    return new Response(zip, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="selected-songs.zip"`,
-      },
-    });
+    return zipResponse(results, "selected-songs.zip");
   }
 
   if (pathname === "/api/selected" && method === "POST") {

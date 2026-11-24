@@ -13,7 +13,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   const isPage = req.mode === "navigate" && url.origin === location.origin && url.pathname.startsWith("/versuri/");
-  const isLib = CDN_HOSTS.includes(url.hostname);
+  const isLib = CDN_HOSTS.includes(url.hostname) || (url.origin === location.origin && url.pathname.startsWith("/assets/"));
   if (!isPage && !isLib) return;
 
   // Pages are stored under their path only, so /versuri/?song=7 and /versuri/ share one copy.

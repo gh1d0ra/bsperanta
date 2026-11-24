@@ -5,16 +5,7 @@
 <title>Versuri</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  html, body { height: 100%; margin: 0; background: #000; color: #fff; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  #topBar {
-    position: sticky; top: 0; z-index: 10;
-    background: #111; padding: 10px; display: flex; gap: 10px;
-  }
-  #topBar button {
-    min-height: 48px; min-width: 80px; padding: 10px 20px; font-size: 18px;
-    border: 1px solid #555; background: #222; color: #fff; border-radius: 6px;
-    touch-action: manipulation;
-  }
+  html, body { height: 100%; margin: 0; background: #05070b; color: #f5f6f8; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   #songView {
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
@@ -24,24 +15,18 @@
     max-width: 900px;
     margin: 0 auto;
   }
-  #songView .chordLine { color: red; font-weight: 700; white-space: pre; }
-  #songView hr { border: none; border-top: 1px solid #333; margin: 24px 0; }
+  #songView .chordLine { color: #ff6b6b; font-weight: 700; white-space: pre; }
+  #songView hr { border: none; border-top: 1px solid #1f2633; margin: 24px 0; }
   @media (max-width: 768px) {
     #songView { font-size: 24px; padding: 16px; }
   }
 </style>
 </head>
 <body>
-<div id="topBar">
-  <button onclick="transpose(-1)">Down ♭</button>
-  <button onclick="transpose(1)">Up ♯</button>
-</div>
 <div id="songView"></div>
 <script>
 let lastSongId = null;
 let currentSong = null;
-const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const FLAT_TO_SHARP = { Ab:"G#", Bb:"A#", Db:"C#", Eb:"D#", Gb:"F#" };
 
 async function poll() {
   try {
@@ -89,30 +74,6 @@ function render() {
     lineNum++;
   }
   document.getElementById("songView").innerHTML = out.join("");
-}
-
-function transposeChord(token, up) {
-  let m = token.match(/^([A-G][#b]?)(m?)(7?)(?:\/([A-G][#b]?)(m?)(7?))?$/);
-  if (!m) return token;
-  function shift(note) {
-    note = FLAT_TO_SHARP[note] || note;
-    let idx = NOTE_ORDER.indexOf(note);
-    if (idx === -1) return note;
-    idx = (idx + (up ? 1 : -1) + 12) % 12;
-    return NOTE_ORDER[idx];
-  }
-  let result = shift(m[1]) + m[2] + m[3];
-  if (m[4]) result += "/" + shift(m[4]) + m[5] + m[6];
-  return result;
-}
-
-function transpose(direction) {
-  document.querySelectorAll(".chordLine").forEach((el) => {
-    el.textContent = el.textContent.replace(/\[([^\]]*)\]/g, (full, inner) => {
-      if (!inner.trim()) return full;
-      return "[" + transposeChord(inner, direction > 0) + "]";
-    });
-  });
 }
 
 poll();

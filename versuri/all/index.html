@@ -4,39 +4,51 @@
 <meta charset="UTF-8" />
 <title>Toate Cântările - Versuri</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+<meta name="theme-color" content="#1d3557">
+<script src="/assets/theme.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="/assets/site.css">
 <style>
-  body { font-size: 18px; }
-  .container { padding-top: 20px; }
-  #songList tr { cursor: pointer; }
-  #songList td, #songList th { padding: 10px 8px; }
-  #filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-  #filters input, #filters select { font-size: 16px; min-height: 44px; }
+  #filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  #filters input, #filters select { min-height: 46px; }
   #searchBox { flex: 2; min-width: 200px; }
   #typeFilter { flex: 1; min-width: 160px; }
-  th.sortableCol { cursor: pointer; }
+  #count { color: var(--sp-muted); font-size: 0.9rem; }
 </style>
 </head>
 <body>
-<div class="container">
-  <a href="/versuri/" class="btn btn-outline-secondary" style="margin-bottom:16px;">← Back to Versuri</a>
-  <h3>Toate Cântările</h3>
+<nav class="sp-navbar sticky-top py-2">
+  <div class="container-xl d-flex align-items-center gap-2">
+    <a class="sp-brand text-decoration-none" href="/"><span class="sp-brand-mark">✝</span></a>
+    <a href="/versuri/" class="btn btn-soft">← Versuri</a>
+  </div>
+</nav>
+<main class="container-xl py-4">
+  <div class="d-flex align-items-baseline justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="h2 mb-0">Toate Cântările</h1>
+    <span id="count"></span>
+  </div>
   <div id="filters">
-    <input class="form-control" id="searchBox" placeholder="Search by name..." oninput="renderSongList()">
-    <select class="form-control" id="typeFilter" onchange="renderSongList()">
+    <input class="form-control" id="searchBox" placeholder="Caută după nume..." oninput="renderSongList()">
+    <select class="form-select" id="typeFilter" onchange="renderSongList()">
       <option value="">All Types</option>
     </select>
   </div>
-  <table class="table" id="songList">
-    <thead><tr>
-      <th class="sortableCol" data-key="songName">Name</th>
-      <th class="sortableCol" data-key="songType">Type</th>
-      <th class="sortableCol" data-key="sangCount">Sang Count</th>
-      <th class="sortableCol" data-key="lastSang">Last Sang</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <div class="sp-card p-0 overflow-hidden">
+    <div class="table-responsive">
+      <table class="table sp-table" id="songList">
+        <thead><tr>
+          <th class="sortableCol ps-3" data-key="songName">Name</th>
+          <th class="sortableCol" data-key="baseKey">Key</th>
+          <th class="sortableCol" data-key="songType">Type</th>
+          <th class="sortableCol" data-key="sangCount">Sang</th>
+          <th class="sortableCol" data-key="lastSang">Last Sang</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</main>
 <script>
 let allSongs = [];
 let sortState = { key: "songName", dir: 1 };
@@ -64,7 +76,7 @@ function sortSongs(list) {
   return [...list].sort((a, b) => {
     let av = a[key], bv = b[key];
     if (key === "sangCount") { av = av || 0; bv = bv || 0; }
-    if (key === "lastSang") { av = av || ""; bv = bv || ""; }
+    if (key === "lastSang" || key === "baseKey") { av = av || ""; bv = bv || ""; }
     if (typeof av === "string") av = av.toLowerCase();
     if (typeof bv === "string") bv = bv.toLowerCase();
     if (av < bv) return -1 * dir;
@@ -88,15 +100,20 @@ function renderSongList() {
   const typeVal = document.getElementById("typeFilter").value;
   const tbody = document.querySelector("#songList tbody");
   tbody.innerHTML = "";
+  document.querySelectorAll("#songList th.sortableCol").forEach((th) => {
+    th.classList.toggle("sorted", th.dataset.key === sortState.key);
+    th.classList.toggle("desc", th.dataset.key === sortState.key && sortState.dir < 0);
+  });
   const filtered = allSongs.filter((s) => {
     const matchesName = s.songName.toLowerCase().includes(q);
     const matchesType = !typeVal || s.songType === typeVal;
     return matchesName && matchesType;
   });
+  document.getElementById("count").textContent = `${filtered.length} cântări`;
   sortSongs(filtered).forEach((s) => {
     const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${s.songName}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
+    tr.innerHTML = `<td class="ps-3">${s.songName}</td><td>${s.baseKey || ""}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
     tr.onclick = () => { window.location.href = `/versuri/?song=${s.songId}`; };
     tbody.appendChild(tr);
   });

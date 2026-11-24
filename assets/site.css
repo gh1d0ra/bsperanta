@@ -1,0 +1,198 @@
+/* Shared look for sperantanc.com, on top of Bootstrap 5.3.
+   Light and dark follow the device setting (see assets/theme.js). */
+
+:root,
+[data-bs-theme="light"] {
+  --sp-navy: #1d3557;
+  --sp-navy-2: #274872;
+  --sp-gold: #c9a227;
+  --sp-gold-soft: #f6eccb;
+  --sp-bg: #f6f7fb;
+  --sp-surface: #ffffff;
+  --sp-border: #e4e7ef;
+  --sp-text: #1f2430;
+  --sp-muted: #6b7280;
+  --sp-chord: #c62828;
+  --sp-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 16px rgba(16, 24, 40, 0.06);
+
+  --bs-body-bg: var(--sp-bg);
+  --bs-body-color: var(--sp-text);
+  --bs-border-color: var(--sp-border);
+  --bs-primary: var(--sp-navy);
+  --bs-primary-rgb: 29, 53, 87;
+  --bs-link-color: var(--sp-navy-2);
+  --bs-link-color-rgb: 39, 72, 114;
+  --bs-link-hover-color: var(--sp-gold);
+  --bs-border-radius: 0.6rem;
+  --bs-border-radius-lg: 0.9rem;
+}
+
+[data-bs-theme="dark"] {
+  --sp-navy: #8fb3e8;
+  --sp-navy-2: #a9c5ee;
+  --sp-gold: #e2bf4f;
+  --sp-gold-soft: #3a3220;
+  --sp-bg: #10141c;
+  --sp-surface: #181e29;
+  --sp-border: #2a3343;
+  --sp-text: #e6e9ef;
+  --sp-muted: #9aa3b2;
+  --sp-chord: #ff6b6b;
+  --sp-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+
+  --bs-body-bg: var(--sp-bg);
+  --bs-body-color: var(--sp-text);
+  --bs-border-color: var(--sp-border);
+  --bs-primary: var(--sp-navy);
+  --bs-primary-rgb: 143, 179, 232;
+  --bs-link-color: var(--sp-navy-2);
+  --bs-link-color-rgb: 169, 197, 238;
+  --bs-link-hover-color: var(--sp-gold);
+  --bs-secondary-bg: #1f2633;
+  --bs-tertiary-bg: #1c2230;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, .sp-serif {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Buttons ---------- */
+.btn { border-radius: 0.6rem; font-weight: 500; }
+.btn-primary {
+  --bs-btn-bg: #1d3557; --bs-btn-border-color: #1d3557;
+  --bs-btn-hover-bg: #274872; --bs-btn-hover-border-color: #274872;
+  --bs-btn-active-bg: #16294a; --bs-btn-active-border-color: #16294a;
+  --bs-btn-color: #fff; --bs-btn-hover-color: #fff;
+}
+[data-bs-theme="dark"] .btn-primary {
+  --bs-btn-bg: #3f6aa8; --bs-btn-border-color: #3f6aa8;
+  --bs-btn-hover-bg: #5181c4; --bs-btn-hover-border-color: #5181c4;
+}
+.btn-gold {
+  --bs-btn-bg: var(--sp-gold); --bs-btn-border-color: var(--sp-gold);
+  --bs-btn-hover-bg: #b38e1c; --bs-btn-hover-border-color: #b38e1c;
+  --bs-btn-color: #1d1a10; --bs-btn-hover-color: #1d1a10;
+  --bs-btn-active-bg: #a07f18; --bs-btn-active-color: #1d1a10;
+}
+.btn-soft {
+  --bs-btn-bg: var(--sp-surface); --bs-btn-border-color: var(--sp-border);
+  --bs-btn-color: var(--sp-text);
+  --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: var(--sp-border);
+  --bs-btn-hover-color: var(--sp-text);
+  --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-color: var(--sp-text);
+}
+
+/* ---------- Site header / footer ---------- */
+.sp-navbar {
+  background: color-mix(in srgb, var(--sp-surface) 85%, transparent);
+  backdrop-filter: saturate(160%) blur(10px);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  border-bottom: 1px solid var(--sp-border);
+}
+.sp-brand {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-weight: 700; font-size: 1.35rem; color: var(--sp-navy) !important;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.sp-brand-mark {
+  width: 2rem; height: 2rem; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  background: var(--sp-navy); color: var(--sp-gold); font-size: 1rem;
+}
+[data-bs-theme="dark"] .sp-brand-mark { background: var(--sp-gold); color: #10141c; }
+.sp-navbar .nav-link { font-weight: 500; color: var(--sp-muted); border-radius: 0.5rem; padding: 0.45rem 0.85rem !important; }
+.sp-navbar .nav-link:hover { color: var(--sp-text); background: var(--bs-tertiary-bg); }
+.sp-navbar .nav-link.active { color: var(--sp-navy); background: var(--sp-gold-soft); }
+
+.sp-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--sp-border);
+  background: var(--sp-surface);
+  color: var(--sp-muted);
+  font-size: 0.95rem;
+}
+.sp-footer a { color: inherit; }
+
+/* ---------- Content blocks ---------- */
+.sp-hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(1200px 400px at 85% -10%, rgba(201, 162, 39, 0.35), transparent 60%),
+    linear-gradient(135deg, #16294a 0%, #1d3557 45%, #2b5285 100%);
+  border-radius: var(--bs-border-radius-lg);
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem);
+  box-shadow: var(--sp-shadow);
+}
+.sp-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 700; margin-bottom: 1rem; }
+.sp-hero .lead { color: rgba(255, 255, 255, 0.85); max-width: 46rem; }
+.sp-eyebrow {
+  display: inline-block; text-transform: uppercase; letter-spacing: 0.12em;
+  font-size: 0.78rem; font-weight: 600; color: var(--sp-gold); margin-bottom: 0.75rem;
+}
+.sp-verse {
+  border-left: 3px solid var(--sp-gold);
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  margin: 1.75rem 0 0;
+  max-width: 46rem;
+}
+.sp-verse p { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.2rem; font-style: italic; margin-bottom: 0.5rem; color: rgba(255,255,255,0.92); }
+.sp-verse cite { font-style: normal; font-size: 0.9rem; color: var(--sp-gold); }
+
+.sp-card {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--bs-border-radius-lg);
+  box-shadow: var(--sp-shadow);
+  padding: 1.5rem;
+  height: 100%;
+}
+.sp-card h3 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+.sp-icon {
+  width: 2.75rem; height: 2.75rem; border-radius: 0.75rem;
+  display: inline-grid; place-items: center; font-size: 1.3rem;
+  background: var(--sp-gold-soft); margin-bottom: 1rem;
+}
+.sp-muted { color: var(--sp-muted); }
+.sp-section-title { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: 1rem; }
+.sp-prose p { font-size: 1.08rem; line-height: 1.75; }
+
+.sp-contact-line { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.sp-contact-line a { text-decoration: none; }
+.sp-contact-line a:hover { text-decoration: underline; }
+
+/* ---------- Forms and tables ---------- */
+.form-control, .form-select { border-radius: 0.6rem; }
+.form-control:focus, .form-select:focus {
+  border-color: var(--sp-gold);
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--sp-gold) 30%, transparent);
+}
+.sp-table { --bs-table-bg: transparent; margin: 0; }
+.sp-table thead th {
+  font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--sp-muted); font-weight: 600; border-bottom-width: 1px;
+  white-space: nowrap; user-select: none;
+}
+.sp-table tbody tr { cursor: pointer; transition: background 0.12s; }
+.sp-table tbody tr:hover { background: var(--bs-tertiary-bg); }
+.sp-table td { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.sp-table th.sortableCol { cursor: pointer; }
+.sp-table th.sortableCol:hover { color: var(--sp-text); }
+.sp-table th.sorted::after { content: " ▾"; }
+.sp-table th.sorted.desc::after { content: " ▴"; }
+
+.modal-content { border: 1px solid var(--sp-border); border-radius: var(--bs-border-radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.modal-header { border-bottom-color: var(--sp-border); }
+.modal-footer { border-top-color: var(--sp-border); }
+.dropdown-menu { border-radius: 0.75rem; border-color: var(--sp-border); box-shadow: var(--sp-shadow); padding: 0.4rem; }
+.dropdown-item { border-radius: 0.5rem; padding: 0.55rem 0.8rem; }

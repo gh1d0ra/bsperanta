@@ -4,140 +4,143 @@
 <meta charset="UTF-8" />
 <title>Versuri - Biserica Speranța</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+<meta name="theme-color" content="#1d3557">
+<script src="/assets/theme.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="/assets/site.css">
 <style>
   html, body { height: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  body { font-size: 18px; }
+  body { font-size: 17px; }
+
+  /* Toolbar: big touch targets for tablets on stage */
+  #topBar { padding: 0.6rem 0; }
+  #topBar .container-xl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  #topBar .btn { min-height: 48px; padding: 0.5rem 1rem; font-size: 1rem; touch-action: manipulation; }
+  #topBar .btn-group .btn { min-width: 52px; font-size: 1.1rem; }
+  .toolLabel { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sp-muted); margin-right: 0.15rem; }
+  #authArea { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+  #authArea .who { color: var(--sp-muted); font-size: 0.95rem; }
+  #adminMenu .dropdown-item { font-size: 1rem; padding: 0.7rem 0.9rem; }
+
+  /* List panel */
+  .listCard { padding: 1rem 1.25rem; }
+  .listBar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .listBar #listPicker { width: auto; max-width: 100%; font-weight: 600; min-height: 44px; }
+  .listBar .btn { min-height: 44px; }
+  .listMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+  .listMeta a { text-decoration: none; }
+  #selectedEmpty { color: var(--sp-muted); font-style: italic; font-size: 0.95rem; }
+  #selectedList { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  #selectedList li { list-style: none; display: flex; align-items: center; gap: 2px; }
+  #selectedList a {
+    display: inline-block; padding: 0.45rem 1rem;
+    background: var(--sp-surface); border: 1px solid var(--sp-border); border-radius: 999px;
+    color: var(--sp-text); text-decoration: none; font-size: 0.95rem; font-weight: 500;
+    transition: all 0.12s;
+  }
+  #selectedList a:hover { border-color: var(--sp-navy); color: var(--sp-navy); }
+  #selectedList a.current { background: var(--sp-navy); border-color: var(--sp-navy); color: #fff; }
+  [data-bs-theme="dark"] #selectedList a.current { color: #10141c; }
+  #selectedList li.dragging { opacity: 0.4; }
+  #selectedList .dragHandle { cursor: grab; color: var(--sp-muted); font-size: 18px; padding: 4px 2px; touch-action: none; user-select: none; }
+
+  /* Key bar */
+  .keyBar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
+    background: var(--sp-gold-soft); border: 1px solid color-mix(in srgb, var(--sp-gold) 45%, transparent);
+    border-radius: var(--bs-border-radius-lg); padding: 0.6rem 1.25rem; margin-top: 1rem; font-size: 1rem;
+  }
+  .keyBar b { color: var(--sp-chord); font-family: 'Courier New', Courier, monospace; font-size: 1.2rem; }
+
+  /* Song */
+  .songCard { margin-top: 1rem; padding: 1.5rem 1.75rem; }
   #songView { font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 20px; line-height: 1.5; }
-  #songView .chordLine { color: red; font-weight: 700; white-space: pre; }
-  #songList tr { cursor: pointer; }
-  #songList td { padding: 10px 8px; }
-  #topBar { padding: 10px 12px; gap: 8px; }
-  #topBar .btn, #newSongBtn { min-height: 52px; padding: 12px 20px; font-size: 17px; margin: 4px 2px; touch-action: manipulation; }
-  #authArea { margin-left: auto; }
-  #authArea .btn { min-height: 52px; padding: 12px 20px; font-size: 17px; }
-  input, textarea, select { font-size: 16px; min-height: 40px; }
+  #songView .chordLine { color: var(--sp-chord); font-weight: 700; white-space: pre; }
+  #songView hr { border: 0; border-top: 1px solid var(--sp-border); opacity: 1; margin: 1rem 0; }
+  #songView:empty::before { content: "Alege o cântare din listă sau din ☰ Cântări."; color: var(--sp-muted); font-family: system-ui, sans-serif; font-weight: 400; }
+
+  /* Chords editor */
   .chordsEditRow { margin-bottom: 12px; }
   .chordsInputRow { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
   .chordsInputRow .chordsInput { flex: 1; min-height: 40px; font-family: 'Courier New', Courier, monospace; }
-  .chordsInputRow button { min-width: 44px; min-height: 40px; font-size: 18px; border: 1px solid #ccc; background: #fff; border-radius: 6px; touch-action: manipulation; }
-  .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
-  #chordsEditor hr { border: none; border-top: 3px dashed #999; margin: 16px 0; }
-  .modal-dialog { margin: 1rem auto; }
-
-  .selectedPanel {
-    background: #eef6ff;
-    border: 1px solid #d6e9ff;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin: 16px 0;
-  }
-  .selectedPanel h6 {
-    margin: 0 0 8px 0;
-    color: #555;
-    text-transform: uppercase;
-    font-size: 13px;
-    letter-spacing: 0.05em;
-  }
-  .listBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .listBar #listPicker { width: auto; max-width: 100%; font-weight: 600; }
-  #selectedEmpty { color: #777; font-style: italic; font-size: 15px; }
-  #selectedList { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-  #selectedList li { list-style: none; }
-  #selectedList a {
-    display: inline-block;
-    padding: 6px 14px;
-    background: #fff;
-    border: 1px solid #b9d8ff;
-    border-radius: 20px;
-    color: #0d6efd;
-    text-decoration: none;
-    font-size: 15px;
-  }
-  #selectedList a:hover { background: #0d6efd; color: #fff; }
-  #selectedList li { display: flex; align-items: center; gap: 2px; }
-  #selectedList li.dragging { opacity: 0.4; }
-  #selectedList .dragHandle {
-    cursor: grab; color: #999; font-size: 18px; padding: 4px 2px;
-    touch-action: none; user-select: none;
-  }
-
-  .keyBar {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
-    background: #fff8e6; border: 1px solid #f3dfa5; border-radius: 8px;
-    padding: 8px 16px; margin-top: 16px; font-size: 17px;
-  }
-  .keyBar b { color: #c62828; font-family: 'Courier New', Courier, monospace; font-size: 19px; }
-  .keyBar .transposed { color: #8a5a00; }
-
-  .songCard {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px 24px;
-    margin-top: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  }
+  .chordsInputRow button { min-width: 44px; min-height: 40px; font-size: 18px; border: 1px solid var(--sp-border); background: var(--sp-surface); border-radius: 0.5rem; touch-action: manipulation; }
+  .chordsEditRow .lyricLine { font-family: 'Courier New', Courier, monospace; padding: 4px 8px; background: var(--bs-tertiary-bg); border-radius: 0.4rem; }
+  #chordsEditor hr { border: 0; border-top: 2px dashed var(--sp-border); opacity: 1; margin: 16px 0; }
+  .modal .form-label { font-weight: 500; margin-bottom: 0.3rem; }
 
   @media (max-width: 768px) {
-    .container-fluid { padding-left: 8px; padding-right: 8px; }
     #songView { font-size: 18px; }
-    .songCard { padding: 14px 16px; }
+    .songCard { padding: 1rem 1.1rem; }
+    #topBar .btn { padding: 0.5rem 0.75rem; }
+    .toolLabel { display: none; }
   }
 </style>
 </head>
 <body>
-<div class="container-fluid">
-  <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top flex-wrap" id="topBar">
-    <button class="btn btn-outline-primary" data-toggle="modal" data-target="#songsModal">☰ Songs</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="transpose(-1)">Down ♭</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="transpose(1)">Up ♯</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(-1)">A-</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="fontAdjust(1)">A+</button>
-    <button class="btn btn-sm btn-outline-primary" id="editSongBtn" style="display:none" onclick="openEditSongModal()">Edit Song</button>
-    <button class="btn btn-sm btn-outline-primary" id="editChordsBtn" style="display:none" onclick="openEditChordsModal()">Edit Chords</button>
-    <button class="btn btn-sm btn-outline-success" id="sangBtn" style="display:none" onclick="markSang()">Mark Sung Today</button>
-    <button class="btn btn-sm btn-outline-info" id="selectBtn" style="display:none" onclick="addSelected()">Add to Selected</button>
-    <button class="btn btn-sm btn-outline-warning" id="publishBtn" style="display:none" onclick="publishSong()">Publish</button>
-    <div id="authArea"></div>
-  </nav>
-
-  <div class="row">
-    <div class="col-12">
-      <div class="selectedPanel">
-        <div class="listBar">
-          <select id="listPicker" class="form-control" onchange="switchList(this.value)">
-            <option value="0">Selected</option>
-          </select>
-          <button class="btn btn-sm btn-outline-success adminOnly" style="display:none" onclick="openNewServiceModal()">+ Service</button>
-          <button class="btn btn-sm btn-outline-danger adminOnly" id="deleteServiceBtn" style="display:none" onclick="deleteService()">Delete service</button>
-          <a href="/api/selected/export" id="exportSelectedBtn" style="display:none; font-size:13px;">⬇ Export for ProPresenter</a>
-          <span id="offlineStatus" style="font-size:13px;"></span>
-        </div>
-        <ul id="selectedList"></ul>
-      </div>
-      <div id="keyBar" class="keyBar" style="display:none"></div>
-      <div class="songCard">
-        <div id="songView"></div>
+<nav class="sp-navbar sticky-top" id="topBar">
+  <div class="container-xl">
+    <a class="sp-brand text-decoration-none me-1" href="/" title="Acasă"><span class="sp-brand-mark">✝</span></a>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#songsModal">☰ Cântări</button>
+    <div class="d-flex align-items-center">
+      <span class="toolLabel">Text</span>
+      <div class="btn-group" role="group" aria-label="Font size">
+        <button class="btn btn-soft" onclick="fontAdjust(-1)" title="Smaller">A−</button>
+        <button class="btn btn-soft" onclick="fontAdjust(1)" title="Bigger">A+</button>
       </div>
     </div>
+    <div class="dropdown" id="adminMenu" style="display:none">
+      <button class="btn btn-gold dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Admin</button>
+      <ul class="dropdown-menu">
+        <li><button class="dropdown-item" id="editSongBtn" onclick="openEditSongModal()">✏️ Edit Song</button></li>
+        <li><button class="dropdown-item" id="editChordsBtn" onclick="openEditChordsModal()">🎸 Edit Chords</button></li>
+        <li><button class="dropdown-item" id="selectBtn" onclick="addSelected()">Add to Selected</button></li>
+        <li><button class="dropdown-item" id="sangBtn" onclick="markSang()">✅ Mark Sung Today</button></li>
+        <li><button class="dropdown-item" id="publishBtn" onclick="publishSong()">📺 Publish</button></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><button class="dropdown-item" onclick="openNewSongModal()">➕ New Song</button></li>
+      </ul>
+    </div>
+    <div id="authArea"></div>
   </div>
-</div>
+</nav>
+
+<main class="container-xl py-3">
+  <div class="sp-card listCard">
+    <div class="listBar">
+      <select id="listPicker" class="form-select" onchange="switchList(this.value)">
+        <option value="0">Selected</option>
+      </select>
+      <button class="btn btn-soft adminOnly" style="display:none" onclick="openNewServiceModal()">+ Service</button>
+      <button class="btn btn-outline-danger adminOnly" id="deleteServiceBtn" style="display:none" onclick="deleteService()">Delete service</button>
+      <div class="listMeta ms-auto">
+        <span id="offlineStatus"></span>
+        <a href="/api/selected/export" id="exportSelectedBtn" style="display:none">⬇ Export for ProPresenter</a>
+      </div>
+    </div>
+    <ul id="selectedList"></ul>
+  </div>
+  <div id="keyBar" class="keyBar" style="display:none"></div>
+  <div class="sp-card songCard">
+    <div id="songView"></div>
+  </div>
+</main>
 
 <!-- Songs Menu Modal -->
-<div class="modal" id="songsModal" tabindex="-1">
+<div class="modal fade" id="songsModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5>Songs</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5 class="modal-title">Cântări</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
-      <button class="btn btn-sm btn-success" id="newSongBtn" style="display:none" onclick="openNewSongModal()">+ New Song</button>
-      <a href="/versuri/all/" class="btn btn-sm btn-outline-secondary">See all songs (all types)</a>
-      <input class="form-control" id="searchBox" placeholder="Search..." oninput="renderSongList()">
-      <table class="table" id="songList">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <input class="form-control flex-grow-1" style="min-width:200px" id="searchBox" placeholder="Caută..." oninput="renderSongList()">
+        <button class="btn btn-gold" id="newSongBtn" style="display:none" onclick="openNewSongModal()">+ New Song</button>
+        <a href="/versuri/all/" class="btn btn-soft">Toate tipurile</a>
+      </div>
+      <table class="table sp-table" id="songList">
         <thead><tr>
           <th class="sortableCol" data-key="songName">Name</th>
           <th class="sortableCol" data-key="baseKey">Key</th>
           <th class="sortableCol" data-key="songType">Type</th>
-          <th class="sortableCol" data-key="sangCount">Sang Count</th>
+          <th class="sortableCol" data-key="sangCount">Sang</th>
           <th class="sortableCol" data-key="lastSang">Last Sang</th>
         </tr></thead>
         <tbody></tbody>
@@ -147,86 +150,104 @@
 </div>
 
 <!-- New Service Modal -->
-<div class="modal" id="newServiceModal" tabindex="-1">
+<div class="modal fade" id="newServiceModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5>Program nou</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5 class="modal-title">Program nou</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
-      <label for="newServiceDate">Data</label>
-      <input class="form-control" id="newServiceDate" type="date" style="margin-bottom:8px;">
-      <label for="newServiceName">Nume (ex. Crăciun)</label>
+      <label class="form-label" for="newServiceDate">Data</label>
+      <input class="form-control mb-3" id="newServiceDate" type="date">
+      <label class="form-label" for="newServiceName">Nume (ex. Crăciun)</label>
       <input class="form-control" id="newServiceName" maxlength="100">
-      <div id="newServiceError" class="text-danger" style="margin-top:8px;"></div>
+      <div id="newServiceError" class="text-danger mt-2"></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-success" onclick="saveNewService()">Create</button></div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="saveNewService()">Create</button></div>
   </div></div>
 </div>
 
 <!-- Login Modal -->
-<div class="modal" id="loginModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5>Autentificare</h5><button class="close" data-dismiss="modal">&times;</button></div>
+<div class="modal fade" id="loginModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Autentificare</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
-      <input class="form-control" id="loginUser" placeholder="Utilizator" style="margin-bottom:8px;">
-      <input class="form-control" id="loginPass" type="password" placeholder="Parola">
-      <div id="loginError" class="text-danger" style="margin-top:8px;"></div>
+      <input class="form-control mb-2" id="loginUser" placeholder="Utilizator" autocomplete="username">
+      <input class="form-control" id="loginPass" type="password" placeholder="Parola" autocomplete="current-password">
+      <div id="loginError" class="text-danger mt-2"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" onclick="doLogin()">Autentifica</button></div>
   </div></div>
 </div>
 
 <!-- New Song Modal -->
-<div class="modal" id="newSongModal" tabindex="-1">
+<div class="modal fade" id="newSongModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5>Cântarea Nouă</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5 class="modal-title">Cântarea Nouă</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
-      <input class="form-control" id="newSongTitle" placeholder="Titlul" style="margin-bottom:8px;">
-      <input class="form-control" id="newSongBaseKey" placeholder="Ton de bază (ex. D, Em)" maxlength="10" style="margin-bottom:8px;">
-      <textarea class="form-control" id="newSongContent" rows="10" placeholder="Conținut"></textarea>
-      <select class="form-control" id="newSongType" style="margin-top:8px;">
-        <option value="obste">Obste</option>
-        <option value="christmas">Christmas</option>
-        <option value="harvest">Harvest</option>
-        <option value="easter">Easter</option>
-        <option value="newyear">New Year</option>
-        <option value="pentecost">Pentecost</option>
-        <option value="other">Other</option>
-      </select>
+      <label class="form-label" for="newSongTitle">Titlul</label>
+      <input class="form-control mb-3" id="newSongTitle">
+      <div class="row g-2 mb-3">
+        <div class="col-5">
+          <label class="form-label" for="newSongBaseKey">Ton de bază</label>
+          <input class="form-control" id="newSongBaseKey" placeholder="ex. D, Em" maxlength="10">
+        </div>
+        <div class="col-7">
+          <label class="form-label" for="newSongType">Tip</label>
+          <select class="form-select" id="newSongType">
+            <option value="obste">Obste</option>
+            <option value="christmas">Christmas</option>
+            <option value="harvest">Harvest</option>
+            <option value="easter">Easter</option>
+            <option value="newyear">New Year</option>
+            <option value="pentecost">Pentecost</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <label class="form-label" for="newSongContent">Conținut</label>
+      <textarea class="form-control" id="newSongContent" rows="10"></textarea>
     </div>
-    <div class="modal-footer"><button class="btn btn-success" onclick="saveNewSong()">Save</button></div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="saveNewSong()">Save</button></div>
   </div></div>
 </div>
 
 <!-- Edit Song (lyrics) Modal -->
-<div class="modal" id="editSongModal" tabindex="-1">
+<div class="modal fade" id="editSongModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5>Editează Versurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5 class="modal-title">Editează Versurile</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
-      <label for="editBaseKey">Ton de bază (base key)</label>
-      <input class="form-control" id="editBaseKey" placeholder="ex. D, Em, F#" maxlength="10" style="margin-bottom:8px; max-width:200px;">
+      <div class="row g-2 mb-3">
+        <div class="col-5 col-md-3">
+          <label class="form-label" for="editBaseKey">Ton de bază</label>
+          <input class="form-control" id="editBaseKey" placeholder="ex. D, Em, F#" maxlength="10">
+        </div>
+        <div class="col-7 col-md-4">
+          <label class="form-label" for="editType">Tip</label>
+          <select class="form-select" id="editType">
+            <option value="obste">Obste</option>
+            <option value="christmas">Christmas</option>
+            <option value="harvest">Harvest</option>
+            <option value="easter">Easter</option>
+            <option value="newyear">New Year</option>
+            <option value="pentecost">Pentecost</option>
+            <option value="grup">Grup</option>
+            <option value="instrumental">Instrumental</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <label class="form-label" for="editContent">Versuri</label>
       <textarea class="form-control" id="editContent" rows="14"></textarea>
-      <select class="form-control" id="editType" style="margin-top:8px;">
-        <option value="obste">Obste</option>
-        <option value="christmas">Christmas</option>
-        <option value="harvest">Harvest</option>
-        <option value="easter">Easter</option>
-        <option value="newyear">New Year</option>
-        <option value="pentecost">Pentecost</option>
-        <option value="grup">Grup</option>
-        <option value="instrumental">Instrumental</option>
-        <option value="other">Other</option>
-      </select>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline-danger" style="margin-right:auto;" onclick="deleteSong()">Delete Song</button>
+      <button class="btn btn-outline-danger me-auto" onclick="deleteSong()">Delete Song</button>
       <button class="btn btn-primary" onclick="saveContent()">Save</button>
     </div>
   </div></div>
 </div>
 
 <!-- Edit Chords Modal -->
-<div class="modal" id="editChordsModal" tabindex="-1">
+<div class="modal fade" id="editChordsModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5>Editează Acordurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
+    <div class="modal-header"><h5 class="modal-title">Editează Acordurile</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
       <div id="chordsEditor"></div>
     </div>
@@ -234,16 +255,14 @@
   </div></div>
 </div>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let me = { loggedIn: false };
 let allSongs = [];
 let currentSong = null;
-const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const FLAT_TO_SHARP = { Ab:"G#", Bb:"A#", Db:"C#", Eb:"D#", Gb:"F#" };
 
 function $(id) { return document.getElementById(id); }
+function modal(id) { return bootstrap.Modal.getOrCreateInstance($(id)); }
 
 async function api(path, opts) {
   const res = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
@@ -257,16 +276,12 @@ async function api(path, opts) {
 function renderAuthArea() {
   const el = $("authArea");
   if (me.loggedIn) {
-    el.innerHTML = `<span class="mr-2">Logged in as ${me.title}</span> <button class="btn btn-sm btn-outline-secondary" onclick="doLogout()">Log Out</button>`;
+    el.innerHTML = `<span class="who d-none d-sm-inline">${escapeHtml(me.title || "")}</span><button class="btn btn-soft" onclick="doLogout()">Log Out</button>`;
   } else {
-    el.innerHTML = `<button class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#loginModal">Login</button>`;
+    el.innerHTML = `<button class="btn btn-soft" data-bs-toggle="modal" data-bs-target="#loginModal">Login</button>`;
   }
   const showAdmin = me.loggedIn && me.permission && me.permission.includes("admin");
-  $("editSongBtn").style.display = showAdmin ? "inline-block" : "none";
-  $("editChordsBtn").style.display = showAdmin ? "inline-block" : "none";
-  $("sangBtn").style.display = showAdmin ? "inline-block" : "none";
-  $("selectBtn").style.display = showAdmin ? "inline-block" : "none";
-  $("publishBtn").style.display = showAdmin ? "inline-block" : "none";
+  $("adminMenu").style.display = showAdmin ? "block" : "none";
   $("newSongBtn").style.display = showAdmin ? "inline-block" : "none";
   if (typeof selectedSongs !== "undefined") renderSelected();
   if (typeof renderListControls !== "undefined") renderListControls();
@@ -281,7 +296,7 @@ async function doLogin() {
   try {
     me = await api("/api/login", { method: "POST", body: JSON.stringify({ username: $("loginUser").value, password: $("loginPass").value }) });
     $("loginError").textContent = "";
-    jQuery("#loginModal").modal("hide");
+    modal("loginModal").hide();
     renderAuthArea();
   } catch (e) {
     $("loginError").textContent = e.message;
@@ -337,11 +352,15 @@ function renderSongList() {
   const q = $("searchBox").value.toLowerCase();
   const tbody = document.querySelector("#songList tbody");
   tbody.innerHTML = "";
+  document.querySelectorAll("#songList th.sortableCol").forEach((th) => {
+    th.classList.toggle("sorted", th.dataset.key === sortState.key);
+    th.classList.toggle("desc", th.dataset.key === sortState.key && sortState.dir < 0);
+  });
   sortSongs(allSongs.filter((s) => s.songName.toLowerCase().includes(q))).forEach((s) => {
     const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${s.songName}</td><td>${s.baseKey || ""}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
-    tr.onclick = () => { loadSong(s.songId); jQuery("#songsModal").modal("hide"); };
+    tr.onclick = () => { loadSong(s.songId); modal("songsModal").hide(); };
     tbody.appendChild(tr);
   });
 }
@@ -424,7 +443,7 @@ function openNewServiceModal() {
   $("newServiceDate").value = "";
   $("newServiceName").value = "";
   $("newServiceError").textContent = "";
-  jQuery("#newServiceModal").modal("show");
+  modal("newServiceModal").show();
 }
 
 async function saveNewService() {
@@ -433,7 +452,7 @@ async function saveNewService() {
       method: "POST",
       body: JSON.stringify({ date: $("newServiceDate").value, name: $("newServiceName").value }),
     });
-    jQuery("#newServiceModal").modal("hide");
+    modal("newServiceModal").hide();
     await loadServices();
     await switchList(res.serviceId);
   } catch (e) {
@@ -515,7 +534,8 @@ function renderSelected() {
     const li = document.createElement("li");
     li.dataset.songId = s.songId;
     const handle = isAdmin ? `<span class="dragHandle" title="Tap to remove, drag to reorder">⠿</span>` : "";
-    li.innerHTML = `${handle}<a href="#" onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    const cur = currentSong && currentSong.songId === s.songId ? " class=\"current\"" : "";
+    li.innerHTML = `${handle}<a href="#"${cur} onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
     if (isAdmin) {
       const handleEl = li.querySelector(".dragHandle");
       handleEl.addEventListener("pointerdown", (e) => {
@@ -597,29 +617,17 @@ async function loadSong(songId, force = false) {
   renderSong();
 }
 
-// Semitones each song is transposed by. Kept in memory only, so a song stays
-// transposed while switching between songs, and resets when the page is refreshed.
-const transposeBy = {};
-
 function renderKeyBar() {
   const bar = $("keyBar");
   if (!currentSong) { bar.style.display = "none"; return; }
-  const steps = transposeBy[currentSong.songId] || 0;
   const base = (currentSong.baseKey || "").trim();
-  let html = `<span>Base key: <b>${base ? escapeHtml(base) : "—"}</b></span>`;
-  if (steps) {
-    const sign = steps > 0 ? `+${steps}` : `${steps}`;
-    const now = base ? ` → <b>${escapeHtml(transposeSteps(base, steps))}</b>` : "";
-    html += `<span class="transposed">Transposed ${sign}${now}</span>`;
-    html += `<button class="btn btn-sm btn-outline-secondary" onclick="resetTranspose()">Back to original</button>`;
-  }
-  bar.innerHTML = html;
+  bar.innerHTML = `<span>Base key: <b>${base ? escapeHtml(base) : "—"}</b></span>`;
   bar.style.display = "flex";
 }
 
 function renderSong() {
   renderKeyBar();
-  const steps = transposeBy[currentSong.songId] || 0;
+  renderSelected();
   const chordMap = {};
   currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
   const lines = currentSong.songContent.split("\n");
@@ -633,58 +641,13 @@ function renderSong() {
     }
     const chords = chordMap[`${stanza}-${lineNum}`];
     if (chords && chords.replace(/[\[\]]/g, "").trim() !== "") {
-      const display = transposeLine(chords, steps).replace(/\[\]/g, "  ");
+      const display = chords.replace(/\[\]/g, "  ");
       out.push(`<div class="chordLine">${display}</div>`);
     }
     out.push(`<div>${line}</div>`);
     lineNum++;
   }
   $("songView").innerHTML = out.join("");
-}
-
-function transposeChord(token, up) {
-  let m = token.match(/^([A-G][#b]?)(m?)(7?)(?:\/([A-G][#b]?)(m?)(7?))?$/);
-  if (!m) return token;
-  function shift(note) {
-    note = FLAT_TO_SHARP[note] || note;
-    let idx = NOTE_ORDER.indexOf(note);
-    if (idx === -1) return note;
-    idx = (idx + (up ? 1 : -1) + 12) % 12;
-    return NOTE_ORDER[idx];
-  }
-  let result = shift(m[1]) + m[2] + m[3];
-  if (m[4]) result += "/" + shift(m[4]) + m[5] + m[6];
-  return result;
-}
-
-function transposeSteps(token, steps) {
-  const up = steps > 0;
-  for (let i = 0; i < Math.abs(steps); i++) token = transposeChord(token, up);
-  return token;
-}
-
-function transposeLine(chords, steps) {
-  if (!steps) return chords;
-  return chords.replace(/\[([^\]]*)\]/g, (full, inner) =>
-    inner.trim() ? "[" + transposeSteps(inner.trim(), steps) + "]" : full
-  );
-}
-
-function transpose(direction) {
-  if (!currentSong) return;
-  const id = currentSong.songId;
-  // Keep within one octave: +12 is the same key as 0.
-  let steps = ((transposeBy[id] || 0) + direction) % 12;
-  if (steps > 6) steps -= 12;
-  if (steps < -6) steps += 12;
-  transposeBy[id] = steps;
-  renderSong();
-}
-
-function resetTranspose() {
-  if (!currentSong) return;
-  delete transposeBy[currentSong.songId];
-  renderSong();
 }
 
 function fontAdjust(delta) {
@@ -714,7 +677,7 @@ async function publishSong() {
 }
 
 function openNewSongModal() {
-  jQuery("#newSongModal").modal("show");
+  modal("newSongModal").show();
 }
 
 async function saveNewSong() {
@@ -722,7 +685,7 @@ async function saveNewSong() {
     method: "POST",
     body: JSON.stringify({ name: $("newSongTitle").value, content: $("newSongContent").value, type: $("newSongType").value, baseKey: $("newSongBaseKey").value }),
   });
-  jQuery("#newSongModal").modal("hide");
+  modal("newSongModal").hide();
   loadSongs();
 }
 
@@ -738,7 +701,7 @@ function openEditSongModal() {
     typeSelect.appendChild(opt);
   }
   typeSelect.value = currentSong.songType || "other";
-  jQuery("#editSongModal").modal("show");
+  modal("editSongModal").show();
 }
 
 let chordsClipboard = "";
@@ -782,7 +745,7 @@ function openEditChordsModal() {
     editor.appendChild(row);
     lineNum++;
   });
-  jQuery("#editChordsModal").modal("show");
+  modal("editChordsModal").show();
 }
 
 async function deleteSong() {
@@ -791,7 +754,7 @@ async function deleteSong() {
   if (!confirm(`Are you absolutely sure? Type OK to permanently delete "${currentSong.songName}" and its chords.`)) return;
   await api(`/api/songs/${currentSong.songId}`, { method: "DELETE" });
   delete songCache[currentSong.songId];
-  jQuery("#editSongModal").modal("hide");
+  modal("editSongModal").hide();
   currentSong = null;
   $("songView").innerHTML = "";
   history.replaceState(null, "", location.pathname);
@@ -804,7 +767,7 @@ async function saveContent() {
     method: "PUT",
     body: JSON.stringify({ content: $("editContent").value, type: $("editType").value, baseKey: $("editBaseKey").value }),
   });
-  jQuery("#editSongModal").modal("hide");
+  modal("editSongModal").hide();
   loadSong(currentSong.songId, true);
   loadSongs();
 }
@@ -815,7 +778,7 @@ async function saveChords() {
     entries.push({ stanza: parseInt(row.dataset.stanza), line: parseInt(row.dataset.line), chords: row.querySelector(".chordsInput").value });
   });
   await api(`/api/songs/${currentSong.songId}/chords`, { method: "POST", body: JSON.stringify({ entries }) });
-  jQuery("#editChordsModal").modal("hide");
+  modal("editChordsModal").hide();
   loadSong(currentSong.songId, true);
 }
 

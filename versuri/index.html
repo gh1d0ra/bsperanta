@@ -62,6 +62,14 @@
     touch-action: none; user-select: none;
   }
 
+  .keyBar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    background: #fff8e6; border: 1px solid #f3dfa5; border-radius: 8px;
+    padding: 8px 16px; margin-top: 16px; font-size: 17px;
+  }
+  .keyBar b { color: #c62828; font-family: 'Courier New', Courier, monospace; font-size: 19px; }
+  .keyBar .transposed { color: #8a5a00; }
+
   .songCard {
     background: #fff;
     border: 1px solid #e0e0e0;
@@ -108,6 +116,7 @@
         </div>
         <ul id="selectedList"></ul>
       </div>
+      <div id="keyBar" class="keyBar" style="display:none"></div>
       <div class="songCard">
         <div id="songView"></div>
       </div>
@@ -126,6 +135,7 @@
       <table class="table" id="songList">
         <thead><tr>
           <th class="sortableCol" data-key="songName">Name</th>
+          <th class="sortableCol" data-key="baseKey">Key</th>
           <th class="sortableCol" data-key="songType">Type</th>
           <th class="sortableCol" data-key="sangCount">Sang Count</th>
           <th class="sortableCol" data-key="lastSang">Last Sang</th>
@@ -170,6 +180,7 @@
     <div class="modal-header"><h5>Cântarea Nouă</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
       <input class="form-control" id="newSongTitle" placeholder="Titlul" style="margin-bottom:8px;">
+      <input class="form-control" id="newSongBaseKey" placeholder="Ton de bază (ex. D, Em)" maxlength="10" style="margin-bottom:8px;">
       <textarea class="form-control" id="newSongContent" rows="10" placeholder="Conținut"></textarea>
       <select class="form-control" id="newSongType" style="margin-top:8px;">
         <option value="obste">Obste</option>
@@ -190,6 +201,8 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><h5>Editează Versurile</h5><button class="close" data-dismiss="modal">&times;</button></div>
     <div class="modal-body">
+      <label for="editBaseKey">Ton de bază (base key)</label>
+      <input class="form-control" id="editBaseKey" placeholder="ex. D, Em, F#" maxlength="10" style="margin-bottom:8px; max-width:200px;">
       <textarea class="form-control" id="editContent" rows="14"></textarea>
       <select class="form-control" id="editType" style="margin-top:8px;">
         <option value="obste">Obste</option>
@@ -298,7 +311,7 @@ function sortSongs(list) {
   return [...list].sort((a, b) => {
     let av = a[key], bv = b[key];
     if (key === "sangCount") { av = av || 0; bv = bv || 0; }
-    if (key === "lastSang") { av = av || ""; bv = bv || ""; }
+    if (key === "lastSang" || key === "baseKey") { av = av || ""; bv = bv || ""; }
     if (typeof av === "string") av = av.toLowerCase();
     if (typeof bv === "string") bv = bv.toLowerCase();
     if (av < bv) return -1 * dir;
@@ -327,7 +340,7 @@ function renderSongList() {
   sortSongs(allSongs.filter((s) => s.songName.toLowerCase().includes(q))).forEach((s) => {
     const lastSang = s.lastSang ? s.lastSang.slice(0, 10) : "";
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${s.songName}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
+    tr.innerHTML = `<td>${s.songName}</td><td>${s.baseKey || ""}</td><td>${s.songType || ""}</td><td>${s.sangCount || 0}</td><td>${lastSang}</td>`;
     tr.onclick = () => { loadSong(s.songId); jQuery("#songsModal").modal("hide"); };
     tbody.appendChild(tr);
   });
@@ -581,6 +594,32 @@ async function loadSong(songId, force = false) {
   currentSong = song;
   history.replaceState(null, "", `?song=${songId}`);
   document.title = currentSong.songName;
+  renderSong();
+}
+
+// Semitones each song is transposed by. Kept in memory only, so a song stays
+// transposed while switching between songs, and resets when the page is refreshed.
+const transposeBy = {};
+
+function renderKeyBar() {
+  const bar = $("keyBar");
+  if (!currentSong) { bar.style.display = "none"; return; }
+  const steps = transposeBy[currentSong.songId] || 0;
+  const base = (currentSong.baseKey || "").trim();
+  let html = `<span>Base key: <b>${base ? escapeHtml(base) : "—"}</b></span>`;
+  if (steps) {
+    const sign = steps > 0 ? `+${steps}` : `${steps}`;
+    const now = base ? ` → <b>${escapeHtml(transposeSteps(base, steps))}</b>` : "";
+    html += `<span class="transposed">Transposed ${sign}${now}</span>`;
+    html += `<button class="btn btn-sm btn-outline-secondary" onclick="resetTranspose()">Back to original</button>`;
+  }
+  bar.innerHTML = html;
+  bar.style.display = "flex";
+}
+
+function renderSong() {
+  renderKeyBar();
+  const steps = transposeBy[currentSong.songId] || 0;
   const chordMap = {};
   currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
   const lines = currentSong.songContent.split("\n");
@@ -594,7 +633,7 @@ async function loadSong(songId, force = false) {
     }
     const chords = chordMap[`${stanza}-${lineNum}`];
     if (chords && chords.replace(/[\[\]]/g, "").trim() !== "") {
-      const display = chords.replace(/\[\]/g, "  ");
+      const display = transposeLine(chords, steps).replace(/\[\]/g, "  ");
       out.push(`<div class="chordLine">${display}</div>`);
     }
     out.push(`<div>${line}</div>`);
@@ -618,13 +657,34 @@ function transposeChord(token, up) {
   return result;
 }
 
+function transposeSteps(token, steps) {
+  const up = steps > 0;
+  for (let i = 0; i < Math.abs(steps); i++) token = transposeChord(token, up);
+  return token;
+}
+
+function transposeLine(chords, steps) {
+  if (!steps) return chords;
+  return chords.replace(/\[([^\]]*)\]/g, (full, inner) =>
+    inner.trim() ? "[" + transposeSteps(inner.trim(), steps) + "]" : full
+  );
+}
+
 function transpose(direction) {
-  document.querySelectorAll(".chordLine").forEach((el) => {
-    el.textContent = el.textContent.replace(/\[([^\]]*)\]/g, (full, inner) => {
-      if (!inner.trim()) return full;
-      return "[" + transposeChord(inner, direction > 0) + "]";
-    });
-  });
+  if (!currentSong) return;
+  const id = currentSong.songId;
+  // Keep within one octave: +12 is the same key as 0.
+  let steps = ((transposeBy[id] || 0) + direction) % 12;
+  if (steps > 6) steps -= 12;
+  if (steps < -6) steps += 12;
+  transposeBy[id] = steps;
+  renderSong();
+}
+
+function resetTranspose() {
+  if (!currentSong) return;
+  delete transposeBy[currentSong.songId];
+  renderSong();
 }
 
 function fontAdjust(delta) {
@@ -660,7 +720,7 @@ function openNewSongModal() {
 async function saveNewSong() {
   await api("/api/songs", {
     method: "POST",
-    body: JSON.stringify({ name: $("newSongTitle").value, content: $("newSongContent").value, type: $("newSongType").value }),
+    body: JSON.stringify({ name: $("newSongTitle").value, content: $("newSongContent").value, type: $("newSongType").value, baseKey: $("newSongBaseKey").value }),
   });
   jQuery("#newSongModal").modal("hide");
   loadSongs();
@@ -669,6 +729,7 @@ async function saveNewSong() {
 function openEditSongModal() {
   if (!currentSong) return;
   $("editContent").value = currentSong.songContent;
+  $("editBaseKey").value = currentSong.baseKey || "";
   const typeSelect = $("editType");
   if (currentSong.songType && ![...typeSelect.options].some((o) => o.value === currentSong.songType)) {
     const opt = document.createElement("option");
@@ -741,7 +802,7 @@ async function deleteSong() {
 async function saveContent() {
   await api(`/api/songs/${currentSong.songId}`, {
     method: "PUT",
-    body: JSON.stringify({ content: $("editContent").value, type: $("editType").value }),
+    body: JSON.stringify({ content: $("editContent").value, type: $("editType").value, baseKey: $("editBaseKey").value }),
   });
   jQuery("#editSongModal").modal("hide");
   loadSong(currentSong.songId, true);

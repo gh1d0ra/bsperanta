@@ -215,6 +215,22 @@ function zipResponse(songs, filename) {
   });
 }
 
+// SONGS.baseKey: the song's original key (e.g. "D", "Em"), kept apart from the
+// title and lyrics so it is never exported. Added on first use if missing.
+let songColumnsReady = false;
+async function ensureSongColumns(env) {
+  if (songColumnsReady) return;
+  const { results } = await env.DB.prepare("PRAGMA table_info(SONGS)").all();
+  if (!results.some((c) => c.name === "baseKey")) {
+    await env.DB.prepare("ALTER TABLE SONGS ADD COLUMN baseKey TEXT").run();
+  }
+  songColumnsReady = true;
+}
+
+function cleanKey(key) {
+  return typeof key === "string" ? key.trim().slice(0, 10) : "";
+}
+
 // Every song of a list with its chords, in one response, so the page can show
 // the whole list without further network calls. idsSql selects the songIds.
 async function fullSongs(env, idsSql, binds) {
@@ -339,6 +355,7 @@ async function handleServicesApi(request, env, url) {
 async function handleApi(request, env, url) {
   const { pathname } = url;
   const method = request.method;
+  await ensureSongColumns(env);
 
   if (pathname === "/api/services" || pathname.startsWith("/api/services/")) {
     return handleServicesApi(request, env, url);
@@ -392,7 +409,7 @@ async function handleApi(request, env, url) {
       ? ""
       : `AND s.songType NOT IN (${ACTIVE_SONG_TYPE_EXCLUDE.map(() => "?").join(",")})`;
     const stmt = env.DB.prepare(
-      `SELECT s.songId, s.songName, s.songType, m.sangCount, m.lastSang
+      `SELECT s.songId, s.songName, s.songType, s.baseKey, m.sangCount, m.lastSang
        FROM SONGS s
        LEFT JOIN (
          SELECT songId, COUNT(*) as sangCount, MAX(sangDateTime) as lastSang
@@ -422,11 +439,11 @@ async function handleApi(request, env, url) {
     const admin = await requireAdmin(request, env);
     if (!admin) return json({ error: "Unauthorized" }, 401);
     const songId = parseInt(songMatch[1], 10);
-    const { content, type } = await request.json();
+    const { content, type, baseKey } = await request.json();
     await env.DB.prepare(
-      "UPDATE SONGS SET songContent = ?, songType = ?, lastUpdated = CURRENT_TIMESTAMP WHERE songId = ?"
+      "UPDATE SONGS SET songContent = ?, songType = ?, baseKey = COALESCE(?, baseKey), lastUpdated = CURRENT_TIMESTAMP WHERE songId = ?"
     )
-      .bind(content, type || "other", songId)
+      .bind(content, type || "other", baseKey === undefined ? null : cleanKey(baseKey), songId)
       .run();
     return json({ ok: true });
   }
@@ -478,12 +495,12 @@ async function handleApi(request, env, url) {
   if (pathname === "/api/songs" && method === "POST") {
     const admin = await requireAdmin(request, env);
     if (!admin) return json({ error: "Unauthorized" }, 401);
-    const { name, content, type } = await request.json();
+    const { name, content, type, baseKey } = await request.json();
     if (!name || !content) return json({ error: "Missing fields" }, 400);
     await env.DB.prepare(
-      "INSERT INTO SONGS (songName, songContent, songType, songIsActive, addDateTime) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)"
+      "INSERT INTO SONGS (songName, songContent, songType, baseKey, songIsActive, addDateTime) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)"
     )
-      .bind(name, content, type || "other")
+      .bind(name, content, type || "other", cleanKey(baseKey))
       .run();
     return json({ ok: true });
   }

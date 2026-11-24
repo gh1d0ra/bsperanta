@@ -41,7 +41,14 @@
   #selectedList a.current { background: var(--sp-navy); border-color: var(--sp-navy); color: #fff; }
   [data-bs-theme="dark"] #selectedList a.current { color: #10141c; }
   #selectedList li.dragging { opacity: 0.4; }
-  #selectedList .dragHandle { cursor: grab; color: var(--sp-muted); font-size: 18px; padding: 4px 2px; touch-action: none; user-select: none; }
+  #selectedList .dragHandle { cursor: grab; color: var(--sp-muted); font-size: 20px; padding: 6px 6px; touch-action: none; user-select: none; }
+  #selectedList .removeBtn {
+    width: 32px; height: 32px; margin-left: 2px; border-radius: 50%;
+    border: 1px solid var(--sp-border); background: var(--sp-surface);
+    color: var(--sp-muted); font-size: 20px; line-height: 1; padding: 0;
+    display: inline-grid; place-items: center; touch-action: manipulation; cursor: pointer;
+  }
+  #selectedList .removeBtn:hover { color: #dc3545; border-color: #dc3545; background: color-mix(in srgb, #dc3545 8%, var(--sp-surface)); }
 
   /* Key bar */
   .keyBar {
@@ -503,6 +510,19 @@ function setOfflineStatus(text, warn) {
   el.style.color = warn ? "#b45309" : "#2e7d32";
 }
 
+async function removeFromList(songId) {
+  const song = selectedSongs.find((s) => s.songId === songId);
+  if (!song || !confirm(`Remove "${song.songName}" from ${currentListName()}?`)) return;
+  try {
+    await api(listSongUrl(songId), { method: "DELETE" });
+  } catch (e) {
+    alert(`Could not remove the song: ${e.message}`);
+    return;
+  }
+  await loadSelected();
+  if (currentList) loadServices();
+}
+
 async function loadSelected() {
   try {
     const [list, full] = await Promise.all([api(listSongsUrl()), api(listUrl("/full"))]);
@@ -536,9 +556,10 @@ function renderSelected() {
   selectedSongs.forEach((s) => {
     const li = document.createElement("li");
     li.dataset.songId = s.songId;
-    const handle = isAdmin ? `<span class="dragHandle" title="Tap to remove, drag to reorder">⠿</span>` : "";
+    const handle = isAdmin ? `<span class="dragHandle" title="Drag to reorder">⠿</span>` : "";
+    const remove = isAdmin ? `<button type="button" class="removeBtn" title="Remove from list" aria-label="Remove ${escapeHtml(s.songName)}" onclick="removeFromList(${s.songId})">×</button>` : "";
     const cur = currentSong && currentSong.songId === s.songId ? " class=\"current\"" : "";
-    li.innerHTML = `${handle}<a href="#"${cur} onclick="loadSong(${s.songId});return false;">${s.songName}</a>`;
+    li.innerHTML = `${handle}<a href="#"${cur} onclick="loadSong(${s.songId});return false;">${s.songName}</a>${remove}`;
     if (isAdmin) {
       const handleEl = li.querySelector(".dragHandle");
       handleEl.addEventListener("pointerdown", (e) => {
@@ -583,14 +604,7 @@ document.addEventListener("pointerup", async () => {
   dragEl.classList.remove("dragging");
   dragEl = null;
 
-  if (!moved) {
-    const song = selectedSongs.find((s) => s.songId === songId);
-    if (song && confirm(`Remove "${song.songName}" from ${currentListName()}?`)) {
-      await api(listSongUrl(songId), { method: "DELETE" });
-      loadSelected();
-    }
-    return;
-  }
+  if (!moved) return; // a tap on the handle does nothing; × removes
 
   const ids = [...document.querySelectorAll("#selectedList li")].map((li) => parseInt(li.dataset.songId, 10));
   selectedSongs = ids.map((id) => selectedSongs.find((s) => s.songId === id));

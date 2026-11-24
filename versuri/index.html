@@ -17,7 +17,6 @@
   #topBar .container-xl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
   #topBar .btn { min-height: 48px; padding: 0.5rem 1rem; font-size: 1rem; touch-action: manipulation; }
   #topBar .btn-group .btn { min-width: 52px; font-size: 1.1rem; }
-  .toolLabel { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sp-muted); margin-right: 0.15rem; }
   #authArea { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
   #authArea .who { color: var(--sp-muted); font-size: 0.95rem; }
   #adminMenu .dropdown-item { font-size: 1rem; padding: 0.7rem 0.9rem; }
@@ -72,7 +71,6 @@
     #songView { font-size: 18px; }
     .songCard { padding: 1rem 1.1rem; }
     #topBar .btn { padding: 0.5rem 0.75rem; }
-    .toolLabel { display: none; }
   }
 </style>
 </head>
@@ -82,7 +80,12 @@
     <a class="sp-brand text-decoration-none me-1" href="/" title="Acasă"><span class="sp-brand-mark">✝</span></a>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#songsModal">☰ Cântări</button>
     <div class="d-flex align-items-center">
-      <span class="toolLabel">Text</span>
+      <div class="btn-group" role="group" aria-label="Transpose">
+        <button class="btn btn-soft" onclick="transpose(-1)" title="Down">♭</button>
+        <button class="btn btn-soft" onclick="transpose(1)" title="Up">♯</button>
+      </div>
+    </div>
+    <div class="d-flex align-items-center">
       <div class="btn-group" role="group" aria-label="Font size">
         <button class="btn btn-soft" onclick="fontAdjust(-1)" title="Smaller">A−</button>
         <button class="btn btn-soft" onclick="fontAdjust(1)" title="Bigger">A+</button>
@@ -628,6 +631,7 @@ function renderKeyBar() {
 function renderSong() {
   renderKeyBar();
   renderSelected();
+  const steps = transposeBy[currentSong.songId] || 0;
   const chordMap = {};
   currentSong.chords.forEach((c) => (chordMap[`${c.stanzaNumber}-${c.lineNumber}`] = c.chords));
   const lines = currentSong.songContent.split("\n");
@@ -641,13 +645,59 @@ function renderSong() {
     }
     const chords = chordMap[`${stanza}-${lineNum}`];
     if (chords && chords.replace(/[\[\]]/g, "").trim() !== "") {
-      const display = chords.replace(/\[\]/g, "  ");
+      const display = transposeLine(chords, steps).replace(/\[\]/g, "  ");
       out.push(`<div class="chordLine">${display}</div>`);
     }
     out.push(`<div>${line}</div>`);
     lineNum++;
   }
   $("songView").innerHTML = out.join("");
+}
+
+// ---- Transpose ----
+// Semitones each song is transposed by. Kept in memory only, so a song stays
+// transposed while switching between songs, and resets when the page is refreshed.
+const transposeBy = {};
+const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT_TO_SHARP = { Ab:"G#", Bb:"A#", Db:"C#", Eb:"D#", Gb:"F#" };
+
+function transposeChord(token, up) {
+  let m = token.match(/^([A-G][#b]?)(m?)(7?)(?:\/([A-G][#b]?)(m?)(7?))?$/);
+  if (!m) return token;
+  function shift(note) {
+    note = FLAT_TO_SHARP[note] || note;
+    let idx = NOTE_ORDER.indexOf(note);
+    if (idx === -1) return note;
+    idx = (idx + (up ? 1 : -1) + 12) % 12;
+    return NOTE_ORDER[idx];
+  }
+  let result = shift(m[1]) + m[2] + m[3];
+  if (m[4]) result += "/" + shift(m[4]) + m[5] + m[6];
+  return result;
+}
+
+function transposeSteps(token, steps) {
+  const up = steps > 0;
+  for (let i = 0; i < Math.abs(steps); i++) token = transposeChord(token, up);
+  return token;
+}
+
+function transposeLine(chords, steps) {
+  if (!steps) return chords;
+  return chords.replace(/\[([^\]]*)\]/g, (full, inner) =>
+    inner.trim() ? "[" + transposeSteps(inner.trim(), steps) + "]" : full
+  );
+}
+
+function transpose(direction) {
+  if (!currentSong) return;
+  const id = currentSong.songId;
+  // Keep within one octave: +12 is the same key as 0.
+  let steps = ((transposeBy[id] || 0) + direction) % 12;
+  if (steps > 6) steps -= 12;
+  if (steps < -6) steps += 12;
+  transposeBy[id] = steps;
+  renderSong();
 }
 
 function fontAdjust(delta) {

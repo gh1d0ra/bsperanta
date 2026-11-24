@@ -6,6 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   html, body { height: 100%; margin: 0; background: #05070b; color: #f5f6f8; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #topBar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5, 7, 11, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid #1f2633;
+    padding: 10px 16px; display: flex; gap: 10px;
+  }
+  #topBar button {
+    min-height: 48px; min-width: 64px; padding: 10px 20px; font-size: 20px;
+    border: 1px solid #2a3343; background: #141a24; color: #f5f6f8; border-radius: 10px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    touch-action: manipulation; cursor: pointer;
+  }
+  #topBar button:hover { background: #1c2430; }
   #songView {
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
@@ -23,10 +36,16 @@
 </style>
 </head>
 <body>
+<div id="topBar">
+  <button onclick="transpose(-1)" title="Down">♭</button>
+  <button onclick="transpose(1)" title="Up">♯</button>
+</div>
 <div id="songView"></div>
 <script>
 let lastSongId = null;
 let currentSong = null;
+const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT_TO_SHARP = { Ab:"G#", Bb:"A#", Db:"C#", Eb:"D#", Gb:"F#" };
 
 async function poll() {
   try {
@@ -74,6 +93,30 @@ function render() {
     lineNum++;
   }
   document.getElementById("songView").innerHTML = out.join("");
+}
+
+function transposeChord(token, up) {
+  let m = token.match(/^([A-G][#b]?)(m?)(7?)(?:\/([A-G][#b]?)(m?)(7?))?$/);
+  if (!m) return token;
+  function shift(note) {
+    note = FLAT_TO_SHARP[note] || note;
+    let idx = NOTE_ORDER.indexOf(note);
+    if (idx === -1) return note;
+    idx = (idx + (up ? 1 : -1) + 12) % 12;
+    return NOTE_ORDER[idx];
+  }
+  let result = shift(m[1]) + m[2] + m[3];
+  if (m[4]) result += "/" + shift(m[4]) + m[5] + m[6];
+  return result;
+}
+
+function transpose(direction) {
+  document.querySelectorAll(".chordLine").forEach((el) => {
+    el.textContent = el.textContent.replace(/\[([^\]]*)\]/g, (full, inner) => {
+      if (!inner.trim()) return full;
+      return "[" + transposeChord(inner, direction > 0) + "]";
+    });
+  });
 }
 
 poll();
